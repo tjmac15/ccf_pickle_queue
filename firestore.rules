@@ -2,12 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This app has no login screen by design — anyone with the link
-    // (your open-play group) can check in and update the queue.
-    // That means these rules are intentionally open. If you want to
-    // lock it down further later, add Firebase App Check or Firebase
-    // Auth and tighten these rules to require it.
-
     match /players/{playerId} {
       allow read, write: if true;
     }
