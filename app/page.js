@@ -86,14 +86,20 @@ export default function Home() {
     return courts.filter((c) => c.number <= settings.courtCount);
   }, [courts, settings]);
 
-  // Whenever the queue or courts change, try to seat the next group of
-  // four on any open court. Safe to call repeatedly from every device.
-  useEffect(() => {
-    if (!ready) return;
-    visibleCourts
-      .filter((c) => c.status === "idle")
-      .forEach((c) => fillCourtIfPossible(c.id));
-  }, [ready, visibleCourts, waitingPlayers.length]);
+  // Manual start: an organizer taps "Start game" on an idle court once
+  // enough people are waiting. The transaction still protects against
+  // two people tapping at the same instant on different devices.
+  async function handleStartGame(courtId) {
+    const result = await fillCourtIfPossible(courtId);
+    if (!result.ok && result.reason === "not-enough-players") {
+      alert("Need at least 4 people waiting in the queue to start a game.");
+    }
+    if (!result.ok && result.reason === "query-failed") {
+      alert(
+        "Couldn't load the queue — this usually means a Firestore index still needs to be created. Check the browser console for a link to create it."
+      );
+    }
+  }
 
   return (
     <div className="shell">
@@ -117,8 +123,10 @@ export default function Home() {
             <CourtCard
               key={court.id}
               court={court}
+              waitingCount={waitingPlayers.length}
               onEndGame={setPendingScore}
               onAdjustMinutes={adjustCourtMinutes}
+              onStartGame={handleStartGame}
             />
           ))}
         </div>

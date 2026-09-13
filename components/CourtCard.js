@@ -9,7 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, onEndGame, onAdjustMinutes }) {
+export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -46,7 +46,9 @@ export default function CourtCard({ court, onEndGame, onAdjustMinutes }) {
       {!isPlaying && (
         <>
           <div className="court-idle-msg">
-            Waiting for the next group of four from the queue.
+            {waitingCount >= 4
+              ? "Ready — 4 players are waiting in the queue."
+              : `Waiting for ${4 - waitingCount} more player${4 - waitingCount === 1 ? "" : "s"} to fill this court.`}
           </div>
           <div className="mini-stepper-row">
             <span>Next game: {court.gameMinutes || 10} min</span>
@@ -58,6 +60,15 @@ export default function CourtCard({ court, onEndGame, onAdjustMinutes }) {
                 +
               </button>
             </div>
+          </div>
+          <div className="court-actions">
+            <button
+              className="btn-ghost-light strong"
+              disabled={waitingCount < 4}
+              onClick={() => onStartGame(court.id)}
+            >
+              Start game
+            </button>
           </div>
         </>
       )}

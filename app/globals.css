@@ -366,6 +366,11 @@ button {
   color: var(--court-dark);
 }
 
+.btn-ghost-light:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* ---------- queue panel ---------- */
 
 .panel {
