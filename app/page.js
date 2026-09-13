@@ -8,6 +8,7 @@ import {
   ensureCourtsExist,
   fillCourtIfPossible,
   adjustCourtMinutes,
+  endSession,
   DEFAULT_SETTINGS,
 } from "../lib/queueLogic";
 
@@ -17,6 +18,7 @@ import QueuePanel from "../components/QueuePanel";
 import Leaderboard from "../components/Leaderboard";
 import ScoreModal from "../components/ScoreModal";
 import SettingsPanel from "../components/SettingsPanel";
+import SessionSummaryModal from "../components/SessionSummaryModal";
 
 export default function Home() {
   const [settings, setSettings] = useState(null);
@@ -24,6 +26,8 @@ export default function Home() {
   const [players, setPlayers] = useState([]);
   const [pendingScore, setPendingScore] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [sessionSummary, setSessionSummary] = useState(null);
+  const [endingSession, setEndingSession] = useState(false);
   const [tab, setTab] = useState("queue");
   const [ready, setReady] = useState(false);
 
@@ -101,6 +105,22 @@ export default function Home() {
     }
   }
 
+  async function handleEndSession() {
+    const activeCourt = visibleCourts.find((c) => c.status === "playing");
+    const confirmMsg = activeCourt
+      ? "A game is still in progress — ending the session now will stop it without a recorded result. End the session anyway?"
+      : "End today's open play? This clears the queue and resets stats for next time — final standings will be saved.";
+    if (!window.confirm(confirmMsg)) return;
+
+    setEndingSession(true);
+    const standings = await endSession();
+    setEndingSession(false);
+    setSessionSummary({
+      standings,
+      totalGames: Math.round(standings.reduce((sum, p) => sum + p.gamesPlayed, 0) / 4),
+    });
+  }
+
   return (
     <div className="shell">
       <div className="topbar">
@@ -111,9 +131,14 @@ export default function Home() {
             <div className="sub">Pickleball queue</div>
           </div>
         </div>
-        <button className="gear-btn" onClick={() => setShowSettings(true)}>
-          Settings
-        </button>
+        <div className="topbar-actions">
+          <button className="gear-btn" onClick={handleEndSession} disabled={endingSession}>
+            {endingSession ? "Ending…" : "End session"}
+          </button>
+          <button className="gear-btn" onClick={() => setShowSettings(true)}>
+            Settings
+          </button>
+        </div>
       </div>
 
       <div className="layout">
@@ -164,6 +189,7 @@ export default function Home() {
       {showSettings && (
         <SettingsPanel settings={settings} onClose={() => setShowSettings(false)} />
       )}
+      <SessionSummaryModal summary={sessionSummary} onClose={() => setSessionSummary(null)} />
     </div>
   );
 }

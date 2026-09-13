@@ -17,7 +17,7 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
   const teamALabel = pending.teamA.map(nameFor).join(" & ");
   const teamBLabel = pending.teamB.map(nameFor).join(" & ");
 
-  async function submit(withScore) {
+  async function submit({ withScore, winner }) {
     setBusy(true);
     await finishGame({
       courtId: pending.courtId,
@@ -27,13 +27,15 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
       teamB: pending.teamB,
       scoreA: withScore ? Number(scoreA) : null,
       scoreB: withScore ? Number(scoreB) : null,
+      winner: winner || null,
       autoRequeue,
     });
     setBusy(false);
     onClose();
   }
 
-  const canSubmitScore = scoreA !== "" && scoreB !== "" && !Number.isNaN(Number(scoreA)) && !Number.isNaN(Number(scoreB));
+  const canSubmitScore =
+    scoreA !== "" && scoreB !== "" && !Number.isNaN(Number(scoreA)) && !Number.isNaN(Number(scoreB));
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -41,7 +43,7 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
         <button className="modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <h3>Enter the score</h3>
+        <h3>End the game</h3>
         <p className="hint">
           {autoRequeue
             ? "These four go back to the end of the queue once you save."
@@ -70,17 +72,42 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
         </div>
 
         <div className="modal-actions">
-          <button className="btn-secondary" disabled={busy} onClick={() => submit(false)}>
-            Skip score
-          </button>
           <button
             className="btn-primary"
             disabled={busy || !canSubmitScore}
-            onClick={() => submit(true)}
+            onClick={() => submit({ withScore: true })}
           >
-            Save & end game
+            Save score & end game
           </button>
         </div>
+
+        <p className="hint" style={{ margin: "18px 0 8px" }}>
+          Didn't track points? Just record who won:
+        </p>
+        <div className="modal-actions">
+          <button
+            className="btn-secondary"
+            disabled={busy}
+            onClick={() => submit({ withScore: false, winner: "A" })}
+          >
+            {teamALabel || "Team A"} won
+          </button>
+          <button
+            className="btn-secondary"
+            disabled={busy}
+            onClick={() => submit({ withScore: false, winner: "B" })}
+          >
+            {teamBLabel || "Team B"} won
+          </button>
+        </div>
+
+        <button
+          className="skip-link"
+          disabled={busy}
+          onClick={() => submit({ withScore: false, winner: null })}
+        >
+          Skip — don't record a result
+        </button>
       </div>
     </div>
   );
