@@ -8,6 +8,7 @@ import {
   ensureCourtsExist,
   fillCourtIfPossible,
   adjustCourtMinutes,
+  reorderQueue,
   endSession,
   DEFAULT_SETTINGS,
 } from "../lib/queueLogic";
@@ -16,9 +17,11 @@ import RegisterForm from "../components/RegisterForm";
 import CourtCard from "../components/CourtCard";
 import QueuePanel from "../components/QueuePanel";
 import Leaderboard from "../components/Leaderboard";
+import SessionHistoryPanel from "../components/SessionHistoryPanel";
 import ScoreModal from "../components/ScoreModal";
 import SettingsPanel from "../components/SettingsPanel";
 import SessionSummaryModal from "../components/SessionSummaryModal";
+import MatchBuilderModal from "../components/MatchBuilderModal";
 
 export default function Home() {
   const [settings, setSettings] = useState(null);
@@ -28,6 +31,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [sessionSummary, setSessionSummary] = useState(null);
   const [endingSession, setEndingSession] = useState(false);
+  const [builderCourtId, setBuilderCourtId] = useState(null);
   const [tab, setTab] = useState("queue");
   const [ready, setReady] = useState(false);
 
@@ -105,6 +109,17 @@ export default function Home() {
     }
   }
 
+  // Reorder the queue by swapping a player up or down one spot.
+  async function handleReorder(playerId, direction) {
+    const ids = waitingPlayers.map((p) => p.id);
+    const idx = ids.indexOf(playerId);
+    const swapWith = direction === "up" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= ids.length) return;
+    const reordered = [...ids];
+    [reordered[idx], reordered[swapWith]] = [reordered[swapWith], reordered[idx]];
+    await reorderQueue(reordered);
+  }
+
   async function handleEndSession() {
     const activeCourt = visibleCourts.find((c) => c.status === "playing");
     const confirmMsg = activeCourt
@@ -152,6 +167,7 @@ export default function Home() {
               onEndGame={setPendingScore}
               onAdjustMinutes={adjustCourtMinutes}
               onStartGame={handleStartGame}
+              onChoosePlayers={setBuilderCourtId}
             />
           ))}
         </div>
@@ -171,13 +187,19 @@ export default function Home() {
               >
                 Leaderboard
               </button>
+              <button
+                className={`tab-btn ${tab === "history" ? "active" : ""}`}
+                onClick={() => setTab("history")}
+              >
+                History
+              </button>
             </div>
           </div>
-          {tab === "queue" ? (
-            <QueuePanel waitingPlayers={waitingPlayers} />
-          ) : (
-            <Leaderboard players={players} />
+          {tab === "queue" && (
+            <QueuePanel waitingPlayers={waitingPlayers} onReorder={handleReorder} />
           )}
+          {tab === "leaderboard" && <Leaderboard players={players} />}
+          {tab === "history" && <SessionHistoryPanel />}
         </div>
       </div>
 
@@ -190,6 +212,11 @@ export default function Home() {
         <SettingsPanel settings={settings} onClose={() => setShowSettings(false)} />
       )}
       <SessionSummaryModal summary={sessionSummary} onClose={() => setSessionSummary(null)} />
+      <MatchBuilderModal
+        courtId={builderCourtId}
+        waitingPlayers={waitingPlayers}
+        onClose={() => setBuilderCourtId(null)}
+      />
     </div>
   );
 }

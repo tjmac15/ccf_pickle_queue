@@ -451,6 +451,119 @@ button {
   text-decoration: underline;
 }
 
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reorder-btns button {
+  width: 22px;
+  height: 18px;
+  border: 1px solid var(--sage);
+  background: var(--bg);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+}
+
+.reorder-btns button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.queue-games {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+.sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.sort-toggle select {
+  border: 1.5px solid var(--sage);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.session-select {
+  width: 100%;
+  border: 1.5px solid var(--sage);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.builder-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.builder-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg);
+  border: 1.5px solid var(--sage);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  text-align: left;
+}
+
+.builder-row:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.builder-row.picked {
+  border-color: var(--court);
+  background: #eef6f3;
+}
+
+.builder-name {
+  font-weight: 600;
+}
+
+.builder-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.builder-tag.team-A {
+  background: var(--court);
+}
+
+.builder-tag.team-B {
+  background: var(--urgent);
+}
+
 /* ---------- leaderboard ---------- */
 
 .lb-row {
@@ -475,6 +588,11 @@ button {
 .lb-name {
   flex: 1;
   font-weight: 600;
+}
+
+.lb-games {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .lb-record {

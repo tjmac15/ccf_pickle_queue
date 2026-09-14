@@ -9,7 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame }) {
+export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -68,6 +68,13 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
               onClick={() => onStartGame(court.id)}
             >
               Start game
+            </button>
+            <button
+              className="btn-ghost-light"
+              disabled={waitingCount < 2}
+              onClick={() => onChoosePlayers(court.id)}
+            >
+              Choose players
             </button>
           </div>
         </>
