@@ -1,6 +1,10 @@
 "use client";
 
+import { useEscapeKey } from "../lib/useEscapeKey";
+
 export default function SessionSummaryModal({ summary, onClose }) {
+  useEscapeKey(onClose, !!summary);
+
   if (!summary) return null;
 
   const { standings, totalGames } = summary;

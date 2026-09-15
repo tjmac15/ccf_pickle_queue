@@ -9,6 +9,7 @@ import {
   fillCourtIfPossible,
   adjustCourtMinutes,
   reorderQueue,
+  finishGame,
   endSession,
   DEFAULT_SETTINGS,
 } from "../lib/queueLogic";
@@ -88,7 +89,10 @@ export default function Home() {
         .sort((a, b) => (a.joinedAt?.toMillis() || 0) - (b.joinedAt?.toMillis() || 0)),
     [players]
   );
-
+    const playingPlayers = useMemo(
+    () => players.filter((p) => p.status === "playing"),
+    [players]
+  );
   const visibleCourts = useMemo(() => {
     if (!settings) return courts;
     return courts.filter((c) => c.number <= settings.courtCount);
@@ -120,6 +124,18 @@ export default function Home() {
     await reorderQueue(reordered);
   }
 
+  // One-tap win: records the winner immediately with no score entry,
+  // for when you just want to log the result and move on.
+  async function handleQuickWin(payload, winner) {
+    await finishGame({
+      ...payload,
+      scoreA: null,
+      scoreB: null,
+      winner,
+      autoRequeue: settings?.autoRequeue ?? true,
+    });
+  }
+
   async function handleEndSession() {
     const activeCourt = visibleCourts.find((c) => c.status === "playing");
     const confirmMsg = activeCourt
@@ -144,6 +160,12 @@ export default function Home() {
           <div>
             <h1>CCF Open Play</h1>
             <div className="sub">Pickleball queue</div>
+            <div className="stats-line">
+              Courts {visibleCourts.filter((c) => c.status === "playing").length}/
+              {visibleCourts.length} · Players{" "}
+              {players.filter((p) => p.status === "waiting" || p.status === "playing").length} ·
+              Queue {waitingPlayers.length}
+            </div>
           </div>
         </div>
         <div className="topbar-actions">
@@ -168,6 +190,7 @@ export default function Home() {
               onAdjustMinutes={adjustCourtMinutes}
               onStartGame={handleStartGame}
               onChoosePlayers={setBuilderCourtId}
+              onQuickWin={handleQuickWin}
             />
           ))}
         </div>
@@ -196,7 +219,7 @@ export default function Home() {
             </div>
           </div>
           {tab === "queue" && (
-            <QueuePanel waitingPlayers={waitingPlayers} onReorder={handleReorder} />
+            <QueuePanel waitingPlayers={waitingPlayers} playingPlayers={playingPlayers} onReorder={handleReorder} />
           )}
           {tab === "leaderboard" && <Leaderboard players={players} />}
           {tab === "history" && <SessionHistoryPanel />}

@@ -8,10 +8,10 @@ function waitLabel(joinedAt, now) {
   const seconds = Math.max(0, Math.floor((now - joinedAt.toMillis()) / 1000));
   if (seconds < 60) return "just joined";
   const mins = Math.floor(seconds / 60);
-  return `waiting ${mins} min`;
+  return `${mins} min`;
 }
 
-export default function QueuePanel({ waitingPlayers, onReorder }) {
+export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder }) {
   const [now, setNow] = useState(Date.now());
   const [sortBy, setSortBy] = useState("queue"); // "queue" | "mostGames" | "fewestGames"
 
@@ -31,6 +31,22 @@ export default function QueuePanel({ waitingPlayers, onReorder }) {
 
   return (
     <div className="panel">
+      {playingPlayers.length > 0 && (
+        <div className="playing-now-section">
+          <h2>
+            Playing now <span className="count">{playingPlayers.length}</span>
+          </h2>
+          {playingPlayers.map((p) => (
+            <div className="playing-row" key={p.id}>
+              <span className="queue-status-tag playing">Playing</span>
+              <span className="queue-name">{p.name}</span>
+              <span className="queue-games">{p.gamesPlayed || 0}g</span>
+              <span className="playing-court-tag">Court {p.courtId}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <h2>
         Queue <span className="count">{waitingPlayers.length} waiting</span>
       </h2>
@@ -55,6 +71,7 @@ export default function QueuePanel({ waitingPlayers, onReorder }) {
         return (
           <div className="queue-row" key={p.id}>
             <span className="queue-badge">No.{queuePosition + 1}</span>
+            <span className="queue-status-tag waiting">Waiting</span>
             <span className="queue-name">{p.name}</span>
             <span className="queue-games">{p.gamesPlayed || 0}g</span>
             <span className="queue-wait">{waitLabel(p.joinedAt, now)}</span>

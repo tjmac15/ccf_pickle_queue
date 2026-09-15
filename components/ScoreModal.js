@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { finishGame } from "../lib/queueLogic";
+import { useEscapeKey } from "../lib/useEscapeKey";
 
 export default function ScoreModal({ pending, autoRequeue, onClose }) {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEscapeKey(onClose, !!pending);
 
   if (!pending) return null;
 

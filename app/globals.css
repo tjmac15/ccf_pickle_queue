@@ -85,6 +85,13 @@ button {
   font-size: 14px;
 }
 
+.stats-line {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: 0.01em;
+}
+
 .gear-btn {
   border: 1.5px solid var(--ink);
   background: transparent;
@@ -276,6 +283,16 @@ button {
   padding: 12px 14px;
 }
 
+.team.team-a {
+  background: rgba(74, 144, 255, 0.22);
+  border: 1.5px solid rgba(74, 144, 255, 0.5);
+}
+
+.team.team-b {
+  background: rgba(224, 117, 47, 0.22);
+  border: 1.5px solid rgba(224, 117, 47, 0.5);
+}
+
 .team .team-label {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
@@ -381,6 +398,54 @@ button {
   cursor: default;
 }
 
+.quick-win-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-win-btn {
+  flex: 1;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.quick-win-btn.team-a {
+  background: #4a90ff;
+}
+
+.quick-win-btn.team-a:hover {
+  background: #3579f0;
+}
+
+.quick-win-btn.team-b {
+  background: #e0752f;
+}
+
+.quick-win-btn.team-b:hover {
+  background: #cc661f;
+}
+
+.enter-score-link {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- queue panel ---------- */
 
 .panel {
@@ -410,6 +475,44 @@ button {
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
+}
+
+.queue-status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.queue-status-tag.waiting {
+  background: var(--line);
+  color: var(--muted);
+}
+
+.queue-status-tag.playing {
+  background: var(--court);
+  color: #fff;
+}
+
+.playing-now-section {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1.5px dashed var(--line);
+}
+
+.playing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  opacity: 0.9;
+}
+
+.playing-court-tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .queue-row:last-child {
@@ -627,6 +730,7 @@ button {
   padding: 26px;
   width: 100%;
   max-width: 420px;
+  position: relative;
 }
 
 .modal h3 {

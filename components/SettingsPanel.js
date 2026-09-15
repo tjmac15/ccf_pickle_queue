@@ -3,8 +3,11 @@
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { ensureCourtsExist, setAllCourtsMinutes } from "../lib/queueLogic";
+import { useEscapeKey } from "../lib/useEscapeKey";
 
 export default function SettingsPanel({ settings, onClose }) {
+  useEscapeKey(onClose, !!settings);
+
   if (!settings) return null;
 
   async function update(patch) {

@@ -9,7 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers }) {
+export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -83,12 +83,12 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
       {isPlaying && (
         <>
           <div className="court-teams">
-            <div className="team">
+            <div className="team team-a">
               <div className="team-label">Team A</div>
               <div className="team-names">{teamAName.join(" & ")}</div>
             </div>
             <span className="vs">vs</span>
-            <div className="team">
+            <div className="team team-b">
               <div className="team-label">Team B</div>
               <div className="team-names">{teamBName.join(" & ")}</div>
             </div>
@@ -108,22 +108,45 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
             </div>
           </div>
 
-          <div className="court-actions">
+          <div className="quick-win-row">
             <button
-              className={`btn-ghost-light ${timeUp ? "strong" : ""}`}
+              className="quick-win-btn team-a"
               onClick={() =>
-                onEndGame({
-                  courtId: court.id,
-                  playerIds: ids,
-                  playerNames: names,
-                  teamA: teamAIds,
-                  teamB: teamBIds,
-                })
+                onQuickWin(
+                  { courtId: court.id, playerIds: ids, playerNames: names, teamA: teamAIds, teamB: teamBIds },
+                  "A"
+                )
               }
             >
-              {timeUp ? "Enter score & end game" : "End game early"}
+              {teamAName.join(" & ") || "Team A"} Wins
+            </button>
+            <button
+              className="quick-win-btn team-b"
+              onClick={() =>
+                onQuickWin(
+                  { courtId: court.id, playerIds: ids, playerNames: names, teamA: teamAIds, teamB: teamBIds },
+                  "B"
+                )
+              }
+            >
+              {teamBName.join(" & ") || "Team B"} Wins
             </button>
           </div>
+
+          <button
+            className="enter-score-link"
+            onClick={() =>
+              onEndGame({
+                courtId: court.id,
+                playerIds: ids,
+                playerNames: names,
+                teamA: teamAIds,
+                teamB: teamBIds,
+              })
+            }
+          >
+            Enter exact score instead
+          </button>
         </>
       )}
     </div>

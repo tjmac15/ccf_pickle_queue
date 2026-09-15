@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { startCustomMatch } from "../lib/queueLogic";
+import { useEscapeKey } from "../lib/useEscapeKey";
 
 export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) {
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
+
+  useEscapeKey(onClose, !!courtId);
 
   if (!courtId) return null;
 
