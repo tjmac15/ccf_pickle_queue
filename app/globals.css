@@ -517,10 +517,12 @@ button {
 }
 
 .queue-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px 42px 70px minmax(64px, 1fr) 140px 64px 26px 42px;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  justify-items: start;
+  column-gap: 10px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -549,10 +551,12 @@ button {
 }
 
 .playing-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 70px minmax(64px, 1fr) 140px 90px;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  justify-items: start;
+  column-gap: 10px;
+  padding: 9px 0;
   opacity: 0.9;
 }
 
@@ -576,14 +580,19 @@ button {
 }
 
 .queue-name {
-  flex: 1;
   font-size: 15px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-self: stretch;
+  width: 100%;
 }
 
 .queue-wait {
   font-size: 12px;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .empty-note {
@@ -617,6 +626,14 @@ button {
   user-select: none;
 }
 
+.drag-handle-hidden {
+  visibility: hidden;
+}
+
+.reorder-btns-hidden {
+  visibility: hidden;
+}
+
 .queue-row.dragging {
   opacity: 0.4;
 }
@@ -648,9 +665,9 @@ button {
   background: var(--line);
   border-radius: 999px;
   padding: 2px 10px;
-  flex-shrink: 0;
-  min-width: 108px;
   text-align: center;
+  white-space: nowrap;
+  justify-self: start;
 }
 
 .sort-toggle {

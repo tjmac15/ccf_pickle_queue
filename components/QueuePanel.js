@@ -119,41 +119,37 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
             data-player-id={p.id}
             key={p.id}
           >
-            {canDrag && (
-              <span
-                className="drag-handle"
-                onPointerDown={(e) => handlePointerDown(e, p.id)}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-                aria-label="Drag to reorder"
-              >
-                ⠿
-              </span>
-            )}
+            <span
+              className={`drag-handle ${canDrag ? "" : "drag-handle-hidden"}`}
+              onPointerDown={(e) => canDrag && handlePointerDown(e, p.id)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              aria-label="Drag to reorder"
+            >
+              ⠿
+            </span>
             <span className="queue-badge">No.{queuePosition + 1}</span>
             <span className="queue-status-tag waiting">Waiting</span>
             <span className="queue-name">{p.name}</span>
             <span className="queue-games">{gamesLabel(p.gamesPlayed)}</span>
             <span className="queue-wait">{waitLabel(p.joinedAt, now)}</span>
-            {sortBy === "queue" && (
-              <div className="reorder-btns">
-                <button
-                  disabled={queuePosition === 0}
-                  onClick={() => onReorder(p.id, "up")}
-                  aria-label="Move up in queue"
-                >
-                  ↑
-                </button>
-                <button
-                  disabled={queuePosition === waitingPlayers.length - 1}
-                  onClick={() => onReorder(p.id, "down")}
-                  aria-label="Move down in queue"
-                >
-                  ↓
-                </button>
-              </div>
-            )}
+            <div className={`reorder-btns ${canDrag ? "" : "reorder-btns-hidden"}`}>
+              <button
+                disabled={queuePosition === 0}
+                onClick={() => onReorder(p.id, "up")}
+                aria-label="Move up in queue"
+              >
+                ↑
+              </button>
+              <button
+                disabled={queuePosition === waitingPlayers.length - 1}
+                onClick={() => onReorder(p.id, "down")}
+                aria-label="Move down in queue"
+              >
+                ↓
+              </button>
+            </div>
             <button className="withdraw-btn" onClick={() => withdrawPlayer(p.id)}>
               leave
             </button>
