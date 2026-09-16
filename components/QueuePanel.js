@@ -125,9 +125,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
 
       {sortBy !== "default" && waitingPlayers.length > 0 && (
         <p className="sort-hint">
-          Sorted for viewing — the ↑↓ arrows and drag handle still move someone's real place in
-          line, it just won't visibly jump in this sorted view. Switch back to "Queue order" to
-          see it.
+        
         </p>
       )}
 
