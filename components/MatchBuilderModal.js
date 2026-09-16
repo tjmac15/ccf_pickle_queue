@@ -65,6 +65,9 @@ export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) 
                 disabled={!picked && selected.length >= 4}
               >
                 <span className="builder-name">{p.name}</span>
+                <span className="builder-games">
+                  {p.gamesPlayed || 0} game{(p.gamesPlayed || 0) === 1 ? "" : "s"} played
+                </span>
                 {picked && <span className={`builder-tag team-${teamOf(idx)}`}>Team {teamOf(idx)}</span>}
               </button>
             );

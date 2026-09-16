@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { finishGame } from "../lib/queueLogic";
 import { useEscapeKey } from "../lib/useEscapeKey";
 
@@ -10,6 +10,15 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
   const [busy, setBusy] = useState(false);
 
   useEscapeKey(onClose, !!pending);
+
+  // Pre-fill with whatever live score was already tracked on the court,
+  // so opening this modal doesn't throw away points you already counted.
+  useEffect(() => {
+    if (pending) {
+      setScoreA(pending.scoreA != null ? String(pending.scoreA) : "");
+      setScoreB(pending.scoreB != null ? String(pending.scoreB) : "");
+    }
+  }, [pending]);
 
   if (!pending) return null;
 

@@ -9,7 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin }) {
+export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin, onAdjustScore }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -94,6 +94,28 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
             </div>
           </div>
 
+          <div className="live-score-row">
+            <div className="live-score-team">
+              <button onClick={() => onAdjustScore(court.id, "A", -1)} aria-label="Decrease Team A score">
+                −
+              </button>
+              <span className="live-score-value">{court.liveScoreA || 0}</span>
+              <button onClick={() => onAdjustScore(court.id, "A", 1)} aria-label="Increase Team A score">
+                +
+              </button>
+            </div>
+            <span className="live-score-label">score</span>
+            <div className="live-score-team">
+              <button onClick={() => onAdjustScore(court.id, "B", -1)} aria-label="Decrease Team B score">
+                −
+              </button>
+              <span className="live-score-value">{court.liveScoreB || 0}</span>
+              <button onClick={() => onAdjustScore(court.id, "B", 1)} aria-label="Increase Team B score">
+                +
+              </button>
+            </div>
+          </div>
+
           <div className="timer-row">
             <div className={`timer ${timeUp ? "urgent" : ""}`}>
               {timeUp ? "0:00" : formatClock(remaining)}
@@ -113,7 +135,15 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
               className="quick-win-btn team-a"
               onClick={() =>
                 onQuickWin(
-                  { courtId: court.id, playerIds: ids, playerNames: names, teamA: teamAIds, teamB: teamBIds },
+                  {
+                    courtId: court.id,
+                    playerIds: ids,
+                    playerNames: names,
+                    teamA: teamAIds,
+                    teamB: teamBIds,
+                    scoreA: court.liveScoreA || 0,
+                    scoreB: court.liveScoreB || 0,
+                  },
                   "A"
                 )
               }
@@ -124,7 +154,15 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
               className="quick-win-btn team-b"
               onClick={() =>
                 onQuickWin(
-                  { courtId: court.id, playerIds: ids, playerNames: names, teamA: teamAIds, teamB: teamBIds },
+                  {
+                    courtId: court.id,
+                    playerIds: ids,
+                    playerNames: names,
+                    teamA: teamAIds,
+                    teamB: teamBIds,
+                    scoreA: court.liveScoreA || 0,
+                    scoreB: court.liveScoreB || 0,
+                  },
                   "B"
                 )
               }
@@ -142,6 +180,8 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
                 playerNames: names,
                 teamA: teamAIds,
                 teamB: teamBIds,
+                scoreA: court.liveScoreA || 0,
+                scoreB: court.liveScoreB || 0,
               })
             }
           >

@@ -8,6 +8,7 @@ import {
   ensureCourtsExist,
   fillCourtIfPossible,
   adjustCourtMinutes,
+  adjustLiveScore,
   reorderQueue,
   finishGame,
   endSession,
@@ -89,10 +90,12 @@ export default function Home() {
         .sort((a, b) => (a.joinedAt?.toMillis() || 0) - (b.joinedAt?.toMillis() || 0)),
     [players]
   );
-    const playingPlayers = useMemo(
+
+  const playingPlayers = useMemo(
     () => players.filter((p) => p.status === "playing"),
     [players]
   );
+
   const visibleCourts = useMemo(() => {
     if (!settings) return courts;
     return courts.filter((c) => c.number <= settings.courtCount);
@@ -124,16 +127,20 @@ export default function Home() {
     await reorderQueue(reordered);
   }
 
-  // One-tap win: records the winner immediately with no score entry,
-  // for when you just want to log the result and move on.
+  // One-tap win: records the winner immediately, carrying forward
+  // whatever live score has been tracked on the court (0-0 if none).
   async function handleQuickWin(payload, winner) {
     await finishGame({
       ...payload,
-      scoreA: null,
-      scoreB: null,
       winner,
       autoRequeue: settings?.autoRequeue ?? true,
     });
+  }
+
+  // Reorder the whole queue at once — used by drag-and-drop, where the
+  // final position (not a single up/down step) is what we know.
+  async function handleReorderFull(newOrderedIds) {
+    await reorderQueue(newOrderedIds);
   }
 
   async function handleEndSession() {
@@ -188,6 +195,7 @@ export default function Home() {
               waitingCount={waitingPlayers.length}
               onEndGame={setPendingScore}
               onAdjustMinutes={adjustCourtMinutes}
+              onAdjustScore={adjustLiveScore}
               onStartGame={handleStartGame}
               onChoosePlayers={setBuilderCourtId}
               onQuickWin={handleQuickWin}
@@ -219,7 +227,12 @@ export default function Home() {
             </div>
           </div>
           {tab === "queue" && (
-            <QueuePanel waitingPlayers={waitingPlayers} playingPlayers={playingPlayers} onReorder={handleReorder} />
+            <QueuePanel
+              waitingPlayers={waitingPlayers}
+              playingPlayers={playingPlayers}
+              onReorder={handleReorder}
+              onReorderFull={handleReorderFull}
+            />
           )}
           {tab === "leaderboard" && <Leaderboard players={players} />}
           {tab === "history" && <SessionHistoryPanel />}

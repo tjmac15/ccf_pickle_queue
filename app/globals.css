@@ -406,6 +406,53 @@ button {
   z-index: 1;
 }
 
+.live-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.live-score-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-score-team button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.live-score-team button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.live-score-value {
+  font-family: var(--font-display), sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  min-width: 28px;
+  text-align: center;
+}
+
+.live-score-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .quick-win-btn {
   flex: 1;
   border: none;
@@ -560,6 +607,24 @@ button {
   gap: 2px;
 }
 
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+  color: var(--muted);
+  font-size: 16px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.queue-row.dragging {
+  opacity: 0.4;
+}
+
+.queue-row.drag-over {
+  border-top: 2px solid var(--court);
+}
+
 .reorder-btns button {
   width: 22px;
   height: 18px;
@@ -582,8 +647,10 @@ button {
   color: var(--muted);
   background: var(--line);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   flex-shrink: 0;
+  min-width: 108px;
+  text-align: center;
 }
 
 .sort-toggle {
@@ -649,6 +716,13 @@ button {
 
 .builder-name {
   font-weight: 600;
+}
+
+.builder-games {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 10px;
+  flex: 1;
 }
 
 .builder-tag {
