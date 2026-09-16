@@ -16,9 +16,40 @@ function gamesLabel(n) {
   return `${count} game${count === 1 ? "" : "s"} played`;
 }
 
+function sortPlayers(list, sortBy) {
+  switch (sortBy) {
+    case "mostGames":
+      return [...list].sort((a, b) => (b.gamesPlayed || 0) - (a.gamesPlayed || 0));
+    case "fewestGames":
+      return [...list].sort((a, b) => (a.gamesPlayed || 0) - (b.gamesPlayed || 0));
+    case "mostWins":
+      return [...list].sort((a, b) => (b.wins || 0) - (a.wins || 0));
+    case "fewestWins":
+      return [...list].sort((a, b) => (a.wins || 0) - (b.wins || 0));
+    default:
+      return list;
+  }
+}
+
+function SortSelect({ value, onChange, defaultLabel }) {
+  return (
+    <div className="sort-toggle">
+      <span>Sort by:</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="default">{defaultLabel}</option>
+        <option value="mostGames">Most games played</option>
+        <option value="fewestGames">Fewest games played</option>
+        <option value="mostWins">Most wins</option>
+        <option value="fewestWins">Fewest wins</option>
+      </select>
+    </div>
+  );
+}
+
 export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, onReorderFull }) {
   const [now, setNow] = useState(Date.now());
-  const [sortBy, setSortBy] = useState("queue"); // "queue" | "mostGames" | "fewestGames"
+  const [sortBy, setSortBy] = useState("default");
+  const [playingSortBy, setPlayingSortBy] = useState("default");
   const [draggingId, setDraggingId] = useState(null);
   const [overId, setOverId] = useState(null);
 
@@ -27,20 +58,14 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
     return () => clearInterval(t);
   }, []);
 
-  const displayed =
-    sortBy === "queue"
-      ? waitingPlayers
-      : [...waitingPlayers].sort((a, b) =>
-          sortBy === "mostGames"
-            ? (b.gamesPlayed || 0) - (a.gamesPlayed || 0)
-            : (a.gamesPlayed || 0) - (b.gamesPlayed || 0)
-        );
+  const displayed = sortPlayers(waitingPlayers, sortBy);
+  const displayedPlaying = sortPlayers(playingPlayers, playingSortBy);
 
   // Drag-and-drop reordering, implemented with Pointer Events (not the
   // older HTML5 drag API) so it works on touch — iPad included — as
-  // well as mouse. This is an addition alongside the ↑/↓ arrows, not
-  // a replacement: arrows are the precise/reliable option, drag is
-  // for quickly moving someone a longer distance in the line.
+  // well as mouse. Works alongside the ↑/↓ arrows regardless of which
+  // sort view you're looking at — both always act on the real queue
+  // position, not the temporary sorted display order.
   function handlePointerDown(e, id) {
     e.currentTarget.setPointerCapture(e.pointerId);
     setDraggingId(id);
@@ -78,7 +103,8 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
           <h2>
             Playing now <span className="count">{playingPlayers.length}</span>
           </h2>
-          {playingPlayers.map((p) => (
+          <SortSelect value={playingSortBy} onChange={setPlayingSortBy} defaultLabel="Court order" />
+          {displayedPlaying.map((p) => (
             <div className="playing-row" key={p.id}>
               <span className="queue-status-tag playing">Playing</span>
               <span className="queue-name">{p.name}</span>
@@ -94,14 +120,15 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
       </h2>
 
       {waitingPlayers.length > 0 && (
-        <div className="sort-toggle">
-          <span>Sort by:</span>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="queue">Queue order</option>
-            <option value="mostGames">Most games played</option>
-            <option value="fewestGames">Fewest games played</option>
-          </select>
-        </div>
+        <SortSelect value={sortBy} onChange={setSortBy} defaultLabel="Queue order" />
+      )}
+
+      {sortBy !== "default" && waitingPlayers.length > 0 && (
+        <p className="sort-hint">
+          Sorted for viewing — the ↑↓ arrows and drag handle still move someone's real place in
+          line, it just won't visibly jump in this sorted view. Switch back to "Queue order" to
+          see it.
+        </p>
       )}
 
       {waitingPlayers.length === 0 && (
@@ -110,7 +137,6 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
 
       {displayed.map((p) => {
         const queuePosition = waitingPlayers.indexOf(p);
-        const canDrag = sortBy === "queue";
         return (
           <div
             className={`queue-row ${draggingId === p.id ? "dragging" : ""} ${
@@ -120,8 +146,8 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
             key={p.id}
           >
             <span
-              className={`drag-handle ${canDrag ? "" : "drag-handle-hidden"}`}
-              onPointerDown={(e) => canDrag && handlePointerDown(e, p.id)}
+              className="drag-handle"
+              onPointerDown={(e) => handlePointerDown(e, p.id)}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
@@ -134,7 +160,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
             <span className="queue-name">{p.name}</span>
             <span className="queue-games">{gamesLabel(p.gamesPlayed)}</span>
             <span className="queue-wait">{waitLabel(p.joinedAt, now)}</span>
-            <div className={`reorder-btns ${canDrag ? "" : "reorder-btns-hidden"}`}>
+            <div className="reorder-btns">
               <button
                 disabled={queuePosition === 0}
                 onClick={() => onReorder(p.id, "up")}

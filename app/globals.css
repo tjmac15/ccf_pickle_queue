@@ -679,6 +679,14 @@ button {
   margin-bottom: 12px;
 }
 
+.sort-hint {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  margin: -6px 0 12px;
+  line-height: 1.4;
+}
+
 .sort-toggle select {
   border: 1.5px solid var(--sage);
   border-radius: var(--radius-sm);
@@ -990,4 +998,26 @@ button {
 .tab-btn.active {
   color: var(--ink);
   border-bottom-color: var(--court);
+}
+/* ---------- verse footer ---------- */
+
+.verse-footer {
+  text-align: center;
+  margin-top: 44px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.verse-footer p {
+  font-family: var(--font-display), sans-serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--court);
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+
+.verse-footer span {
+  font-size: 12px;
 }

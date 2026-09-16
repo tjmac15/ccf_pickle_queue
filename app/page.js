@@ -238,7 +238,14 @@ export default function Home() {
           {tab === "history" && <SessionHistoryPanel />}
         </div>
       </div>
-
+      
+      <div className="verse-footer">
+        <p>
+          "So, whether you eat or drink, or play pickleball, do all to the glory of God."
+        </p>
+        <span>— inspired by 1 Corinthians 10:31</span>
+      </div>
+      
       <ScoreModal
         pending={pendingScore}
         autoRequeue={settings?.autoRequeue ?? true}
