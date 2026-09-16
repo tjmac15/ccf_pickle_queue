@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { withdrawPlayer } from "../lib/queueLogic";
 
 function waitLabel(joinedAt, now) {
@@ -52,13 +52,28 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
   const [playingSortBy, setPlayingSortBy] = useState("default");
   const [draggingId, setDraggingId] = useState(null);
   const [overId, setOverId] = useState(null);
+  const frozenOrderRef = useRef(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
 
-  const displayed = sortPlayers(waitingPlayers, sortBy);
+  // While actively dragging, freeze the row ORDER so a live data update
+  // elsewhere (someone else's game count changing, a new score coming
+  // in) can't reshuffle the list mid-gesture. Reordering the underlying
+  // DOM node while a finger is still down is what breaks touch/pointer
+  // tracking on iOS — this is why drag felt like it "randomly" stopped
+  // working on any sort other than Queue order, where nothing else was
+  // changing the order while you dragged.
+  const displayed = useMemo(() => {
+    if (draggingId && frozenOrderRef.current) {
+      const byId = new Map(waitingPlayers.map((p) => [p.id, p]));
+      return frozenOrderRef.current.map((id) => byId.get(id)).filter(Boolean);
+    }
+    return sortPlayers(waitingPlayers, sortBy);
+  }, [waitingPlayers, sortBy, draggingId]);
+
   const displayedPlaying = sortPlayers(playingPlayers, playingSortBy);
 
   // Drag-and-drop reordering, implemented with Pointer Events (not the
@@ -68,6 +83,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
   // position, not the temporary sorted display order.
   function handlePointerDown(e, id) {
     e.currentTarget.setPointerCapture(e.pointerId);
+    frozenOrderRef.current = displayed.map((p) => p.id);
     setDraggingId(id);
   }
 
@@ -92,6 +108,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
         onReorderFull(ids);
       }
     }
+    frozenOrderRef.current = null;
     setDraggingId(null);
     setOverId(null);
   }
@@ -125,7 +142,9 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
 
       {sortBy !== "default" && waitingPlayers.length > 0 && (
         <p className="sort-hint">
-        
+          Sorted for viewing — the ↑↓ arrows and drag handle still move someone's real place in
+          line, it just won't visibly jump in this sorted view. Switch back to "Queue order" to
+          see it.
         </p>
       )}
 
