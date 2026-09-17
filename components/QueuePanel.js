@@ -49,6 +49,7 @@ function SortSelect({ value, onChange, defaultLabel }) {
 export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, onReorderFull }) {
   const [now, setNow] = useState(Date.now());
   const [sortBy, setSortBy] = useState("default");
+  const [manualOverride, setManualOverride] = useState(false);
   const [playingSortBy, setPlayingSortBy] = useState("default");
   const [draggingId, setDraggingId] = useState(null);
   const [overId, setOverId] = useState(null);
@@ -71,8 +72,8 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
       const byId = new Map(waitingPlayers.map((p) => [p.id, p]));
       return frozenOrderRef.current.map((id) => byId.get(id)).filter(Boolean);
     }
-    return sortPlayers(waitingPlayers, sortBy);
-  }, [waitingPlayers, sortBy, draggingId]);
+    return manualOverride ? waitingPlayers : sortPlayers(waitingPlayers, sortBy);
+  }, [waitingPlayers, sortBy, draggingId, manualOverride]);
 
   const displayedPlaying = sortPlayers(playingPlayers, playingSortBy);
 
@@ -106,11 +107,18 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
         ids.splice(fromIdx, 1);
         ids.splice(toIdx, 0, draggingId);
         onReorderFull(ids);
+        if (sortBy !== "default") setManualOverride(true);
       }
     }
     frozenOrderRef.current = null;
     setDraggingId(null);
     setOverId(null);
+  }
+
+  function handleQueueSortChange(value) {
+    setSortBy(value);
+    // Choosing a sort deliberately reapplies it after a manual override.
+    setManualOverride(false);
   }
 
   return (
@@ -137,13 +145,14 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
       </h2>
 
       {waitingPlayers.length > 0 && (
-        <SortSelect value={sortBy} onChange={setSortBy} defaultLabel="Queue order" />
+        <SortSelect value={sortBy} onChange={handleQueueSortChange} defaultLabel="Queue order" />
       )}
 
       {sortBy !== "default" && waitingPlayers.length > 0 && (
         <p className="sort-hint">
-          This view stays sorted by your selection. The arrows and drag handle still save a
-          player's real Queue order; switch to "Queue order" whenever you want to inspect it.
+          {manualOverride
+            ? "Manual override active — your drag order is shown. Choose a sort option again to reapply it."
+            : "Drag or use the arrows to manually override this sorted order."}
         </p>
       )}
 
@@ -192,6 +201,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
                 disabled={queuePosition === 0}
                 onClick={() => {
                   onReorder(p.id, "up");
+                  if (sortBy !== "default") setManualOverride(true);
                 }}
                 aria-label="Move up in queue"
               >
@@ -201,6 +211,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
                 disabled={queuePosition === waitingPlayers.length - 1}
                 onClick={() => {
                   onReorder(p.id, "down");
+                  if (sortBy !== "default") setManualOverride(true);
                 }}
                 aria-label="Move down in queue"
               >
