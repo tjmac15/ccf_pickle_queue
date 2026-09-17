@@ -999,6 +999,7 @@ button {
   color: var(--ink);
   border-bottom-color: var(--court);
 }
+
 /* ---------- verse footer ---------- */
 
 .verse-footer {
@@ -1020,4 +1021,116 @@ button {
 
 .verse-footer span {
   font-size: 12px;
+}
+
+/* ---------- court block + up next staging ---------- */
+
+.court-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upnext-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--court);
+  padding: 18px 20px;
+}
+
+.upnext-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.upnext-head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--court);
+}
+
+.upnext-autofill {
+  background: var(--line);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.upnext-autofill:hover {
+  background: var(--sage);
+}
+
+.upnext-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.upnext-team-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.upnext-team-label.team-a {
+  color: #2f6fbf;
+}
+
+.upnext-team-label.team-b {
+  color: #cc661f;
+}
+
+.upnext-slot {
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.upnext-slot.filled {
+  background: var(--bg);
+  border: 1.5px solid var(--sage);
+  padding: 0 12px;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.upnext-slot.filled button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.upnext-slot.empty {
+  border: 1.5px dashed var(--sage);
+}
+
+.upnext-slot.empty select {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--court);
+  cursor: pointer;
+}
+
+.upnext-start {
+  width: 100%;
+  margin-top: 6px;
 }
