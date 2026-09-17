@@ -9,7 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin, onAdjustScore }) {
+export default function CourtCard({ court, waitingCount, nextPlayers = [], onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin, onAdjustScore }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -46,10 +46,18 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
       {!isPlaying && (
         <>
           <div className="court-idle-msg">
-            {waitingCount >= 4
-              ? "Ready — 4 players are waiting in the queue."
-              : `Waiting for ${4 - waitingCount} more player${4 - waitingCount === 1 ? "" : "s"} to fill this court.`}
+            {nextPlayers.length === 4
+              ? "Ready — your next match is selected below."
+              : `Select ${4 - nextPlayers.length} more player${4 - nextPlayers.length === 1 ? "" : "s"} for this court.`}
           </div>
+          {nextPlayers.length > 0 && (
+            <div className="court-next-lineup">
+              <div className="court-next-label">Next players</div>
+              <div className="court-next-players">
+                {nextPlayers.map((player) => <span key={player.id}>{player.name}</span>)}
+              </div>
+            </div>
+          )}
           <div className="mini-stepper-row">
             <span>Next game: {court.gameMinutes || 10} min</span>
             <div className="mini-stepper">
@@ -64,8 +72,8 @@ export default function CourtCard({ court, waitingCount, onEndGame, onAdjustMinu
           <div className="court-actions">
             <button
               className="btn-ghost-light strong"
-              disabled={waitingCount < 4}
-              onClick={() => onStartGame(court.id)}
+              disabled={nextPlayers.length < 4}
+              onClick={() => onStartGame(court.id, nextPlayers.map((player) => player.id))}
             >
               Start game
             </button>

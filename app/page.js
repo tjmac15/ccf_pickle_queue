@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import {
@@ -41,6 +41,7 @@ export default function Home() {
   const [builderCourtId, setBuilderCourtId] = useState(null);
   const [tab, setTab] = useState("queue");
   const [ready, setReady] = useState(false);
+  const autoFillInProgress = useRef(false);
 
   // Bootstrap: make sure config + court docs exist on first-ever load.
   useEffect(() => {
@@ -121,10 +122,26 @@ export default function Home() {
     return stagedByCourt;
   }, [visibleCourts]);
 
+  useEffect(() => {
+    if (!ready || autoFillInProgress.current || waitingPlayers.length < 4) return;
+    const emptyCourts = visibleCourts.filter((court) => (court.staged || []).length === 0);
+    if (emptyCourts.length === 0) return;
+    autoFillInProgress.current = true;
+    (async () => {
+      for (const court of emptyCourts) await autoFillStaging(court.id);
+    })().finally(() => {
+      autoFillInProgress.current = false;
+    });
+  }, [ready, visibleCourts, waitingPlayers.length]);
+
   // Manual start: an organizer taps "Start game" on an idle court once
   // enough people are waiting. The transaction still protects against
   // two people tapping at the same instant on different devices.
-  async function handleStartGame(courtId) {
+  async function handleStartGame(courtId, stagedIds) {
+    if (stagedIds?.length === 4) {
+      await handleStartStagedMatch(courtId, stagedIds);
+      return;
+    }
     const result = await fillCourtIfPossible(courtId);
     if (!result.ok && result.reason === "not-enough-players") {
       alert("Need at least 4 people waiting in the queue to start a game.");
@@ -217,11 +234,17 @@ export default function Home() {
       <div className="layout">
         <div className="col">
           <RegisterForm />
-          {visibleCourts.map((court) => (
-            <div className="court-block" key={court.id}>
+          {visibleCourts.map((court) => {
+            const nextPlayers = (court.staged || [])
+              .map((id) => waitingPlayers.find((player) => player.id === id))
+              .filter(Boolean);
+
+            return (
+              <div className="court-block" key={court.id}>
               <CourtCard
                 court={court}
                 waitingCount={waitingPlayers.length}
+                nextPlayers={nextPlayers}
                 onEndGame={setPendingScore}
                 onAdjustMinutes={adjustCourtMinutes}
                 onAdjustScore={adjustLiveScore}
@@ -238,8 +261,9 @@ export default function Home() {
                 onAdd={addToStaging}
                 onStart={handleStartStagedMatch}
               />
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         <div className="col">

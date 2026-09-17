@@ -28,15 +28,17 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
       );
     }
     return (
-      <div className="upnext-slot empty" key={key}>
-        <select value="" onChange={(e) => e.target.value && onAdd(court.id, e.target.value)}>
-          <option value="">+ Tap to add player</option>
-          {availablePlayers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      <div
+        className="upnext-slot empty drop-target"
+        key={key}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const playerId = e.dataTransfer.getData("application/x-pickle-player");
+          if (playerId && availablePlayers.some((p) => p.id === playerId)) onAdd(court.id, playerId);
+        }}
+      >
+        Drag a queue player here
       </div>
     );
   }
@@ -49,6 +51,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           Auto-fill
         </button>
       </div>
+      <p className="upnext-hint">Drag players from the queue into an open slot. Use × to remove them.</p>
       <div className="upnext-teams">
         <div className="upnext-team">
           <div className="upnext-team-label team-a">Team 1</div>
