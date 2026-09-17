@@ -106,9 +106,6 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
         ids.splice(fromIdx, 1);
         ids.splice(toIdx, 0, draggingId);
         onReorderFull(ids);
-        // Sorting is only a view. Once an organizer manually changes the
-        // queue, show Queue order so the saved override is immediately clear.
-        if (sortBy !== "default") setSortBy("default");
       }
     }
     frozenOrderRef.current = null;
@@ -145,8 +142,8 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
 
       {sortBy !== "default" && waitingPlayers.length > 0 && (
         <p className="sort-hint">
-          This is a sorted view. Moving a player with the arrows or drag handle switches back to
-          Queue order so your manual override is visible. Choose this sort again at any time.
+          This view stays sorted by your selection. The arrows and drag handle still save a
+          player's real Queue order; switch to "Queue order" whenever you want to inspect it.
         </p>
       )}
 
@@ -195,7 +192,6 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
                 disabled={queuePosition === 0}
                 onClick={() => {
                   onReorder(p.id, "up");
-                  if (sortBy !== "default") setSortBy("default");
                 }}
                 aria-label="Move up in queue"
               >
@@ -205,7 +201,6 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
                 disabled={queuePosition === waitingPlayers.length - 1}
                 onClick={() => {
                   onReorder(p.id, "down");
-                  if (sortBy !== "default") setSortBy("default");
                 }}
                 aria-label="Move down in queue"
               >
