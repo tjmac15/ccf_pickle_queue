@@ -129,6 +129,8 @@ export default function Home() {
     autoFillInProgress.current = true;
     (async () => {
       for (const court of emptyCourts) await autoFillStaging(court.id);
+    })().catch((error) => {
+      console.error("Couldn't automatically fill Up Next:", error);
     })().finally(() => {
       autoFillInProgress.current = false;
     });
@@ -159,6 +161,15 @@ export default function Home() {
       alert("This court is still in use. Finish the current game before starting the next match.");
     } else if (!result.ok && result.reason === "player-not-waiting") {
       alert("One or more selected players are no longer waiting in the queue. Update the Up Next card and try again.");
+    }
+  }
+
+  async function handleAutoFill(courtId) {
+    try {
+      await autoFillStaging(courtId);
+    } catch (error) {
+      console.error("Couldn't fill Up Next:", error);
+      alert("Couldn't fill Up Next. Check your Firebase connection and try again.");
     }
   }
 
@@ -256,7 +267,7 @@ export default function Home() {
                 court={court}
                 waitingPlayers={waitingPlayers}
                 stagedElsewhereIds={stagedElsewhereIdsByCourt.get(court.id) || new Set()}
-                onAutoFill={autoFillStaging}
+                onAutoFill={handleAutoFill}
                 onRemove={removeFromStaging}
                 onAdd={addToStaging}
                 onStart={handleStartStagedMatch}
