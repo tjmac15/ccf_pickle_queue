@@ -31,11 +31,11 @@ function sortPlayers(list, sortBy) {
   }
 }
 
-function SortSelect({ value, onChange, defaultLabel }) {
+function SortSelect({ value, onChange, onClick, defaultLabel }) {
   return (
     <div className="sort-toggle">
       <span>Sort by:</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} onClick={onClick}>
         <option value="default">{defaultLabel}</option>
         <option value="mostGames">Most games played</option>
         <option value="fewestGames">Fewest games played</option>
@@ -145,7 +145,12 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
       </h2>
 
       {waitingPlayers.length > 0 && (
-        <SortSelect value={sortBy} onChange={handleQueueSortChange} defaultLabel="Queue order" />
+        <SortSelect
+          value={sortBy}
+          onChange={handleQueueSortChange}
+          onClick={() => manualOverride && setManualOverride(false)}
+          defaultLabel="Queue order"
+        />
       )}
 
       {sortBy !== "default" && waitingPlayers.length > 0 && (
