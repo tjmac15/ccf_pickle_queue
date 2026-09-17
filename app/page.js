@@ -131,7 +131,7 @@ export default function Home() {
       for (const court of emptyCourts) await autoFillStaging(court.id);
     })().catch((error) => {
       console.error("Couldn't automatically fill Up Next:", error);
-    })().finally(() => {
+    }).finally(() => {
       autoFillInProgress.current = false;
     });
   }, [ready, visibleCourts, waitingPlayers.length]);
