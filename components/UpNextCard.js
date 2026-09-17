@@ -13,7 +13,8 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
   );
 
   const slots = [0, 1, 2, 3].map((i) => staged[i] || null);
-  const canStart = staged.length === 4;
+  const isCourtAvailable = court.status === "idle";
+  const canStart = staged.length === 4 && isCourtAvailable;
 
   function renderSlot(player, key) {
     if (player) {
@@ -65,7 +66,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
         disabled={!canStart}
         onClick={() => onStart(court.id, staged.map((p) => p.id))}
       >
-        Start this match
+        {isCourtAvailable ? "Start this match" : "Court currently in use"}
       </button>
     </div>
   );

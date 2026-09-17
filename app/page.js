@@ -9,7 +9,11 @@ import {
   fillCourtIfPossible,
   adjustCourtMinutes,
   adjustLiveScore,
+  addToStaging,
+  autoFillStaging,
+  removeFromStaging,
   reorderQueue,
+  startStagedMatch,
   finishGame,
   endSession,
   DEFAULT_SETTINGS,
@@ -17,6 +21,7 @@ import {
 
 import RegisterForm from "../components/RegisterForm";
 import CourtCard from "../components/CourtCard";
+import UpNextCard from "../components/UpNextCard";
 import QueuePanel from "../components/QueuePanel";
 import Leaderboard from "../components/Leaderboard";
 import SessionHistoryPanel from "../components/SessionHistoryPanel";
@@ -101,6 +106,21 @@ export default function Home() {
     return courts.filter((c) => c.number <= settings.courtCount);
   }, [courts, settings]);
 
+  // A player can be staged for only one court at a time. This set lets
+  // each Up Next card hide players already reserved by another court.
+  const stagedElsewhereIdsByCourt = useMemo(() => {
+    const stagedByCourt = new Map();
+    visibleCourts.forEach((court) => {
+      const elsewhere = new Set();
+      visibleCourts.forEach((otherCourt) => {
+        if (otherCourt.id === court.id) return;
+        (otherCourt.staged || []).forEach((id) => elsewhere.add(id));
+      });
+      stagedByCourt.set(court.id, elsewhere);
+    });
+    return stagedByCourt;
+  }, [visibleCourts]);
+
   // Manual start: an organizer taps "Start game" on an idle court once
   // enough people are waiting. The transaction still protects against
   // two people tapping at the same instant on different devices.
@@ -113,6 +133,15 @@ export default function Home() {
       alert(
         "Couldn't load the queue — this usually means a Firestore index still needs to be created. Check the browser console for a link to create it."
       );
+    }
+  }
+
+  async function handleStartStagedMatch(courtId, stagedIds) {
+    const result = await startStagedMatch(courtId, stagedIds);
+    if (!result.ok && result.reason === "court-not-idle") {
+      alert("This court is still in use. Finish the current game before starting the next match.");
+    } else if (!result.ok && result.reason === "player-not-waiting") {
+      alert("One or more selected players are no longer waiting in the queue. Update the Up Next card and try again.");
     }
   }
 
@@ -189,17 +218,27 @@ export default function Home() {
         <div className="col">
           <RegisterForm />
           {visibleCourts.map((court) => (
-            <CourtCard
-              key={court.id}
-              court={court}
-              waitingCount={waitingPlayers.length}
-              onEndGame={setPendingScore}
-              onAdjustMinutes={adjustCourtMinutes}
-              onAdjustScore={adjustLiveScore}
-              onStartGame={handleStartGame}
-              onChoosePlayers={setBuilderCourtId}
-              onQuickWin={handleQuickWin}
-            />
+            <div className="court-block" key={court.id}>
+              <CourtCard
+                court={court}
+                waitingCount={waitingPlayers.length}
+                onEndGame={setPendingScore}
+                onAdjustMinutes={adjustCourtMinutes}
+                onAdjustScore={adjustLiveScore}
+                onStartGame={handleStartGame}
+                onChoosePlayers={setBuilderCourtId}
+                onQuickWin={handleQuickWin}
+              />
+              <UpNextCard
+                court={court}
+                waitingPlayers={waitingPlayers}
+                stagedElsewhereIds={stagedElsewhereIdsByCourt.get(court.id) || new Set()}
+                onAutoFill={autoFillStaging}
+                onRemove={removeFromStaging}
+                onAdd={addToStaging}
+                onStart={handleStartStagedMatch}
+              />
+            </div>
           ))}
         </div>
 
