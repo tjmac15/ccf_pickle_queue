@@ -6,7 +6,6 @@ import { db } from "../lib/firebase";
 import {
   ensureSettingsExist,
   ensureCourtsExist,
-  fillCourtIfPossible,
   adjustCourtMinutes,
   adjustLiveScore,
   addToStaging,
@@ -139,28 +138,18 @@ export default function Home() {
   // Manual start: an organizer taps "Start game" on an idle court once
   // enough people are waiting. The transaction still protects against
   // two people tapping at the same instant on different devices.
-  async function handleStartGame(courtId, stagedIds) {
-    if (stagedIds?.length === 4) {
-      await handleStartStagedMatch(courtId, stagedIds);
-      return;
-    }
-    const result = await fillCourtIfPossible(courtId);
-    if (!result.ok && result.reason === "not-enough-players") {
-      alert("Need at least 4 people waiting in the queue to start a game.");
-    }
-    if (!result.ok && result.reason === "query-failed") {
-      alert(
-        "Couldn't load the queue — this usually means a Firestore index still needs to be created. Check the browser console for a link to create it."
-      );
-    }
+  async function handleStartGame(courtId) {
+    await handleStartStagedMatch(courtId);
   }
 
-  async function handleStartStagedMatch(courtId, stagedIds) {
-    const result = await startStagedMatch(courtId, stagedIds);
+  async function handleStartStagedMatch(courtId) {
+    const result = await startStagedMatch(courtId);
     if (!result.ok && result.reason === "court-not-idle") {
       alert("This court is still in use. Finish the current game before starting the next match.");
     } else if (!result.ok && result.reason === "player-not-waiting") {
       alert("One or more selected players are no longer waiting in the queue. Update the Up Next card and try again.");
+    } else if (!result.ok && result.reason === "staging-incomplete") {
+      alert("Choose four players in Up Next before starting the match.");
     }
   }
 

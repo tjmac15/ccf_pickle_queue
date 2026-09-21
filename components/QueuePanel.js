@@ -187,18 +187,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
             </span>
             <span className="queue-badge">No.{queuePosition + 1}</span>
             <span className="queue-status-tag waiting">Waiting</span>
-            <span
-              className="queue-name drag-source"
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("application/x-pickle-player", p.id);
-                e.dataTransfer.setData("text/plain", p.name);
-              }}
-              title="Drag to an Up Next slot"
-            >
-              {p.name}
-            </span>
+            <span className="queue-name">{p.name}</span>
             <span className="queue-games">{gamesLabel(p.gamesPlayed)}</span>
             <span className="queue-wait">{waitLabel(p.joinedAt, now)}</span>
             <div className="reorder-btns">

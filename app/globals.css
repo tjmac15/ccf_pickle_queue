@@ -594,9 +594,6 @@ button {
   width: 100%;
 }
 
-.queue-name.drag-source { cursor: grab; }
-.queue-name.drag-source:active { cursor: grabbing; }
-
 .queue-wait {
   font-size: 12px;
   color: var(--muted);
@@ -651,8 +648,8 @@ button {
 }
 
 .reorder-btns button {
-  width: 22px;
-  height: 18px;
+  width: 30px;
+  height: 28px;
   border: 1px solid var(--sage);
   background: var(--bg);
   border-radius: 4px;
@@ -1130,12 +1127,356 @@ button {
   padding: 0 12px;
   color: var(--court);
   font-size: 13px;
-  cursor: copy;
+  cursor: pointer;
 }
 
-.upnext-slot.empty.drop-target:hover {
+.upnext-add-slot {
+  width: 100%;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+}
+
+.upnext-add-slot:hover {
   background: var(--line);
   border-color: var(--court);
+}
+
+.upnext-picker {
+  margin: 6px 0 12px;
+  border: 1.5px solid var(--sage);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: var(--bg);
+}
+
+.upnext-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.upnext-picker-head button {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.upnext-picker-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.upnext-picker-list button {
+  min-height: 42px;
+  border: 1px solid var(--sage);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.upnext-picker-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .shell { padding: 14px 12px 48px; }
+  .topbar { align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+  .topbar-actions { flex-direction: column; gap: 6px; }
+  .gear-btn { padding: 7px 10px; }
+  .register-row { flex-direction: column; }
+  .register-row .btn-primary { width: 100%; }
+  .queue-row {
+    grid-template-columns: 22px 46px minmax(0, 1fr) 38px;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .queue-status-tag, .queue-games, .queue-wait { display: none; }
+  .queue-name { font-size: 16px; }
+  .withdraw-btn { grid-column: 3; grid-row: 2; font-size: 13px; }
+  .reorder-btns { grid-column: 4; grid-row: 1 / span 2; }
+  .upnext-card { padding: 16px; }
+  .upnext-teams { gap: 10px; }
+  .upnext-slot { min-height: 46px; }
+}
+
+/* ---------- mobile refinements ---------- */
+
+@media (max-width: 900px) {
+  .shell {
+    max-width: 680px;
+    padding-bottom: 48px;
+  }
+
+  .layout {
+    gap: 16px;
+  }
+
+  .col {
+    gap: 16px;
+  }
+
+  .panel,
+  .register-card,
+  .upnext-card {
+    border-radius: 16px;
+  }
+
+  .court-card {
+    border-radius: 18px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-height: 40px;
+    padding: 9px 6px;
+  }
+
+  .tabs {
+    gap: 10px;
+  }
+
+  .upnext-autofill,
+  .upnext-slot.filled button,
+  .upnext-picker-head button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .shell {
+    padding: 12px 12px 40px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 16px;
+    margin-bottom: 18px;
+  }
+
+  .brand h1 {
+    font-size: 22px;
+  }
+
+  .topbar-actions {
+    flex-direction: row;
+  }
+
+  .gear-btn {
+    flex: 1;
+    min-height: 42px;
+    padding: 8px 10px;
+  }
+
+  .register-card,
+  .panel,
+  .upnext-card {
+    padding: 16px;
+  }
+
+  .court-card {
+    padding: 18px;
+  }
+
+  .court-idle-msg {
+    margin-top: 20px;
+  }
+
+  .court-teams {
+    gap: 8px;
+    margin: 20px 0 16px;
+  }
+
+  .team {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .team .team-names {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .live-score-row {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .live-score-team {
+    gap: 7px;
+  }
+
+  .live-score-team button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .timer {
+    font-size: 48px;
+  }
+
+  .timer-row {
+    align-items: flex-end;
+  }
+
+  .mini-stepper {
+    gap: 4px;
+  }
+
+  .mini-stepper button {
+    min-height: 36px;
+    padding: 7px 9px;
+  }
+
+  .quick-win-row {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .quick-win-btn {
+    min-height: 48px;
+  }
+
+  .court-actions {
+    gap: 8px;
+  }
+
+  .btn-ghost-light {
+    min-height: 46px;
+    padding: 10px 12px;
+  }
+
+  .queue-row {
+    grid-template-columns: 48px minmax(0, 1fr) 38px;
+    column-gap: 8px;
+    padding: 12px 0;
+  }
+
+  .queue-row .drag-handle,
+  .queue-row .queue-status-tag,
+  .queue-row .queue-games,
+  .queue-row .queue-wait {
+    display: none;
+  }
+
+  .queue-badge {
+    grid-column: 1;
+    font-size: 13px;
+    width: auto;
+  }
+
+  .queue-name {
+    grid-column: 2;
+    font-size: 16px;
+  }
+
+  .reorder-btns {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .reorder-btns button {
+    width: 38px;
+    height: 34px;
+    font-size: 14px;
+  }
+
+  .withdraw-btn {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 30px;
+    justify-self: start;
+  }
+
+  .sort-toggle {
+    justify-content: space-between;
+  }
+
+  .sort-toggle select {
+    min-height: 40px;
+    flex: 1;
+    max-width: 235px;
+  }
+
+  .playing-row {
+    grid-template-columns: 72px minmax(0, 1fr) 64px;
+    column-gap: 8px;
+  }
+
+  .playing-row .queue-games {
+    display: none;
+  }
+
+  .playing-court-tag {
+    font-size: 11px;
+  }
+
+  .upnext-head {
+    margin-bottom: 10px;
+  }
+
+  .upnext-hint {
+    margin-bottom: 10px;
+  }
+
+  .upnext-team-label {
+    font-size: 10px;
+  }
+
+  .upnext-slot.filled,
+  .upnext-add-slot {
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  .upnext-picker-list {
+    grid-template-columns: 1fr;
+  }
+
+  .upnext-picker-list button {
+    min-height: 48px;
+    text-align: left;
+    padding: 0 12px;
+  }
+
+  .upnext-start {
+    min-height: 50px;
+  }
+
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: none;
+    border-radius: 20px 20px 0 0;
+    padding: 22px 18px;
+  }
 }
 
 .upnext-start {

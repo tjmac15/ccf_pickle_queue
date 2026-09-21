@@ -73,7 +73,7 @@ export default function CourtCard({ court, waitingCount, nextPlayers = [], onEnd
             <button
               className="btn-ghost-light strong"
               disabled={nextPlayers.length < 4}
-              onClick={() => onStartGame(court.id, nextPlayers.map((player) => player.id))}
+              onClick={() => onStartGame(court.id)}
             >
               Start game
             </button>
