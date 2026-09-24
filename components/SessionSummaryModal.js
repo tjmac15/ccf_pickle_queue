@@ -29,6 +29,7 @@ export default function SessionSummaryModal({ summary, onClose }) {
           <div className="lb-row" key={p.id}>
             <span className="lb-rank">{i + 1}</span>
             <span className="lb-name">{p.name}</span>
+            <span className="lb-games">{p.gamesPlayed || 0} games</span>
             <span className="lb-record">
               {p.wins}-{p.losses}
             </span>

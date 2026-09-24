@@ -1,12 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
 export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, onAutoFill, onRemove, onAdd, onStart }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // Only count ids that still resolve to an actual waiting player — if
-  // someone staged here left the queue, their slot just opens back up
-  // instead of silently blocking the match from starting.
   const staged = (court.staged || [])
     .map((id) => waitingPlayers.find((p) => p.id === id))
     .filter(Boolean);
@@ -31,9 +25,25 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
       );
     }
     return (
-      <button className="upnext-slot empty upnext-add-slot" key={key} onClick={() => setPickerOpen(true)}>
-        + Add player
-      </button>
+      <div
+        className="upnext-slot empty drop-target"
+        key={key}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const playerId = e.dataTransfer.getData("application/x-pickle-player");
+          if (playerId && availablePlayers.some((p) => p.id === playerId)) onAdd(court.id, playerId);
+        }}
+      >
+        <select value="" onChange={(e) => e.target.value && onAdd(court.id, e.target.value)}>
+          <option value="">+ Tap to add player</option>
+          {availablePlayers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
     );
   }
 
@@ -45,7 +55,10 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           Auto-fill
         </button>
       </div>
-      <p className="upnext-hint">Tap an open slot, then tap a waiting player. Use × to remove them.</p>
+      <p className="upnext-hint">
+        Drag a player from the queue on desktop, or tap a slot to pick from a list — works either
+        way on any device. Use × to remove.
+      </p>
       <div className="upnext-teams">
         <div className="upnext-team">
           <div className="upnext-team-label team-a">Team 1</div>
@@ -58,35 +71,10 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           {renderSlot(slots[3], "slot-3")}
         </div>
       </div>
-      {pickerOpen && (
-        <div className="upnext-picker" role="dialog" aria-label="Choose a waiting player">
-          <div className="upnext-picker-head">
-            <strong>Add a player</strong>
-            <button onClick={() => setPickerOpen(false)} aria-label="Close player picker">×</button>
-          </div>
-          {availablePlayers.length > 0 ? (
-            <div className="upnext-picker-list">
-              {availablePlayers.map((player) => (
-                <button
-                  key={player.id}
-                  onClick={() => {
-                    onAdd(court.id, player.id);
-                    setPickerOpen(false);
-                  }}
-                >
-                  {player.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="upnext-picker-empty">No unassigned players are waiting.</p>
-          )}
-        </div>
-      )}
       <button
         className="btn-primary upnext-start"
         disabled={!canStart}
-        onClick={() => onStart(court.id)}
+        onClick={() => onStart(court.id, staged.map((p) => p.id))}
       >
         {isCourtAvailable ? "Start this match" : "Court currently in use"}
       </button>
