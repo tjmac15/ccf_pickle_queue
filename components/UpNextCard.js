@@ -1,6 +1,9 @@
 "use client";
 
 export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, onAutoFill, onRemove, onAdd, onStart }) {
+  // Only count ids that still resolve to an actual waiting player — if
+  // someone staged here left the queue, their slot just opens back up
+  // instead of silently blocking the match from starting.
   const staged = (court.staged || [])
     .map((id) => waitingPlayers.find((p) => p.id === id))
     .filter(Boolean);

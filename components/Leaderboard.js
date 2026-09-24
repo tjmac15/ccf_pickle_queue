@@ -19,6 +19,7 @@ export default function Leaderboard({ players }) {
         <div className="lb-row" key={p.id}>
           <span className="lb-rank">{i + 1}</span>
           <span className="lb-name">{p.name}</span>
+          <span className="lb-games">{p.gamesPlayed || 0} games</span>
           <span className="lb-record">
             {p.wins || 0}-{p.losses || 0}
           </span>

@@ -9,13 +9,30 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({ court, waitingCount, nextPlayers = [], onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin, onAdjustScore }) {
+export default function CourtCard({
+  court,
+  waitingCount,
+  waitingPlayers = [],
+  nextPlayers = [],
+  onEndGame,
+  onAdjustMinutes,
+  onStartGame,
+  onChoosePlayers,
+  onQuickWin,
+  onAdjustScore,
+  onSubstitute,
+}) {
   const [now, setNow] = useState(Date.now());
+  const [swappingId, setSwappingId] = useState(null);
 
   useEffect(() => {
     if (court.status !== "playing") return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
+  }, [court.status]);
+
+  useEffect(() => {
+    setSwappingId(null);
   }, [court.status]);
 
   const isPlaying = court.status === "playing";
@@ -26,10 +43,57 @@ export default function CourtCard({ court, waitingCount, nextPlayers = [], onEnd
 
   const names = court.playerNames || [];
   const ids = court.playerIds || [];
-  const teamAName = [names[0], names[1]].filter(Boolean);
-  const teamBName = [names[2], names[3]].filter(Boolean);
-  const teamAIds = [ids[0], ids[1]].filter(Boolean);
-  const teamBIds = [ids[2], ids[3]].filter(Boolean);
+  // Split evenly by however many players are actually on the court —
+  // 4 for doubles (2/2), 2 for a 1v1 singles match, etc.
+  const half = Math.ceil(names.length / 2);
+  const teamAName = names.slice(0, half);
+  const teamBName = names.slice(half);
+  const teamAIds = ids.slice(0, half);
+  const teamBIds = ids.slice(half);
+
+  async function handleSubstitute(outgoingId, incomingId) {
+    if (!incomingId) return;
+    const result = await onSubstitute(court.id, outgoingId, incomingId);
+    if (!result?.ok) {
+      alert("Couldn't make that swap — the player may have already moved. Try again.");
+    }
+    setSwappingId(null);
+  }
+
+  function renderPlayerRow(id, name) {
+    return (
+      <div className="court-player-row" key={id}>
+        {swappingId === id ? (
+          <select
+            autoFocus
+            value=""
+            onChange={(e) => handleSubstitute(id, e.target.value)}
+            onBlur={() => setSwappingId(null)}
+          >
+            <option value="">Swap in who?</option>
+            {waitingPlayers.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <span>{name}</span>
+            <button
+              className="court-swap-btn"
+              onClick={() => setSwappingId(id)}
+              disabled={waitingPlayers.length === 0}
+              aria-label={`Substitute for ${name}`}
+              title="Substitute this player"
+            >
+              ⇄
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="court-card">
@@ -73,7 +137,7 @@ export default function CourtCard({ court, waitingCount, nextPlayers = [], onEnd
             <button
               className="btn-ghost-light strong"
               disabled={nextPlayers.length < 4}
-              onClick={() => onStartGame(court.id)}
+              onClick={() => onStartGame(court.id, nextPlayers.map((player) => player.id))}
             >
               Start game
             </button>
@@ -93,14 +157,19 @@ export default function CourtCard({ court, waitingCount, nextPlayers = [], onEnd
           <div className="court-teams">
             <div className="team team-a">
               <div className="team-label">Team A</div>
-              <div className="team-names">{teamAName.join(" & ")}</div>
+              <div className="team-names">
+                {teamAIds.map((id, i) => renderPlayerRow(id, teamAName[i]))}
+              </div>
             </div>
             <span className="vs">vs</span>
             <div className="team team-b">
               <div className="team-label">Team B</div>
-              <div className="team-names">{teamBName.join(" & ")}</div>
+              <div className="team-names">
+                {teamBIds.map((id, i) => renderPlayerRow(id, teamBName[i]))}
+              </div>
             </div>
           </div>
+          <p className="court-swap-hint">Tap ⇄ next to a name to substitute in someone from the queue.</p>
 
           <div className="live-score-row">
             <div className="live-score-team">

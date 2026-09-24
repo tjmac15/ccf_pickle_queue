@@ -4,6 +4,8 @@ import { useState } from "react";
 import { startCustomMatch } from "../lib/queueLogic";
 import { useEscapeKey } from "../lib/useEscapeKey";
 
+const VALID_SIZES = [2, 4];
+
 export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) {
   const [selected, setSelected] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -20,19 +22,24 @@ export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) 
     });
   }
 
+  // Splits evenly by however many are selected: 2 -> 1v1 singles,
+  // 4 -> 2v2 doubles. Not enough players for doubles? Just pick 2
+  // and start a singles match instead.
+  const half = Math.ceil(selected.length / 2);
   function teamOf(index) {
-    if (index === 0 || index === 1) return "A";
-    if (index === 2 || index === 3) return "B";
-    return null;
+    if (selected.length < 2) return null;
+    return index < half ? "A" : "B";
   }
 
+  const isValidCount = VALID_SIZES.includes(selected.length);
+
   async function handleStart() {
-    if (selected.length !== 4) return;
+    if (!isValidCount) return;
     setBusy(true);
     const result = await startCustomMatch({
       courtId,
-      teamA: selected.slice(0, 2),
-      teamB: selected.slice(2, 4),
+      teamA: selected.slice(0, half),
+      teamB: selected.slice(half),
     });
     setBusy(false);
     if (!result.ok) {
@@ -50,7 +57,8 @@ export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) 
         </button>
         <h3>Choose players</h3>
         <p className="hint">
-          Tap 4 players in order — the first two become Team A, the next two Team B.
+          Tap 2 players for a 1v1 match, or 4 for doubles — the first half become Team A, the
+          rest Team B.
         </p>
 
         <div className="builder-list">
@@ -80,10 +88,10 @@ export default function MatchBuilderModal({ courtId, waitingPlayers, onClose }) 
           </button>
           <button
             className="btn-primary"
-            disabled={busy || selected.length !== 4}
+            disabled={busy || !isValidCount}
             onClick={handleStart}
           >
-            Start match
+            {selected.length === 2 ? "Start 1v1 match" : "Start match"}
           </button>
         </div>
       </div>
