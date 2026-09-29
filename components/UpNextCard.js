@@ -38,8 +38,22 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           if (playerId && availablePlayers.some((p) => p.id === playerId)) onAdd(court.id, playerId);
         }}
       >
-        <select value="" onChange={(e) => e.target.value && onAdd(court.id, e.target.value)}>
-          <option value="">+ Tap to add player</option>
+        <span className="upnext-slot-hint">Drag a queue player here, or</span>
+        <select
+          className="upnext-slot-select"
+          defaultValue=""
+          // Native drag-and-drop doesn't work on iPad/touch at all, so
+          // this dropdown is the only reliable way to fill a slot there
+          // — keep it alongside the drag target rather than instead of it.
+          onChange={(e) => {
+            const playerId = e.target.value;
+            if (playerId) onAdd(court.id, playerId);
+            e.target.value = "";
+          }}
+        >
+          <option value="" disabled>
+            Tap to pick a player…
+          </option>
           {availablePlayers.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -58,10 +72,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           Auto-fill
         </button>
       </div>
-      <p className="upnext-hint">
-        Drag a player from the queue on desktop, or tap a slot to pick from a list — works either
-        way on any device. Use × to remove.
-      </p>
+      <p className="upnext-hint">Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them.</p>
       <div className="upnext-teams">
         <div className="upnext-team">
           <div className="upnext-team-label team-a">Team 1</div>

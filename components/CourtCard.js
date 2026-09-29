@@ -9,19 +9,7 @@ function formatClock(totalSeconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export default function CourtCard({
-  court,
-  waitingCount,
-  waitingPlayers = [],
-  nextPlayers = [],
-  onEndGame,
-  onAdjustMinutes,
-  onStartGame,
-  onChoosePlayers,
-  onQuickWin,
-  onAdjustScore,
-  onSubstitute,
-}) {
+export default function CourtCard({ court, waitingCount, waitingPlayers = [], nextPlayers = [], onEndGame, onAdjustMinutes, onStartGame, onChoosePlayers, onQuickWin, onAdjustScore, onSubstitute }) {
   const [now, setNow] = useState(Date.now());
   const [swappingId, setSwappingId] = useState(null);
 
@@ -31,9 +19,11 @@ export default function CourtCard({
     return () => clearInterval(t);
   }, [court.status]);
 
+  // Close any open swap picker if the court stops playing, or if the
+  // roster changes out from under it (e.g. the swap just completed).
   useEffect(() => {
     setSwappingId(null);
-  }, [court.status]);
+  }, [court.status, court.playerIds]);
 
   const isPlaying = court.status === "playing";
   const gameSeconds = (court.gameMinutes || 10) * 60;
@@ -43,57 +33,13 @@ export default function CourtCard({
 
   const names = court.playerNames || [];
   const ids = court.playerIds || [];
-  // Split evenly by however many players are actually on the court —
-  // 4 for doubles (2/2), 2 for a 1v1 singles match, etc.
-  const half = Math.ceil(names.length / 2);
-  const teamAName = names.slice(0, half);
-  const teamBName = names.slice(half);
-  const teamAIds = ids.slice(0, half);
-  const teamBIds = ids.slice(half);
+  const teamAName = [names[0], names[1]].filter(Boolean);
+  const teamBName = [names[2], names[3]].filter(Boolean);
+  const teamAIds = [ids[0], ids[1]].filter(Boolean);
+  const teamBIds = [ids[2], ids[3]].filter(Boolean);
 
-  async function handleSubstitute(outgoingId, incomingId) {
-    if (!incomingId) return;
-    const result = await onSubstitute(court.id, outgoingId, incomingId);
-    if (!result?.ok) {
-      alert("Couldn't make that swap — the player may have already moved. Try again.");
-    }
-    setSwappingId(null);
-  }
-
-  function renderPlayerRow(id, name) {
-    return (
-      <div className="court-player-row" key={id}>
-        {swappingId === id ? (
-          <select
-            autoFocus
-            value=""
-            onChange={(e) => handleSubstitute(id, e.target.value)}
-            onBlur={() => setSwappingId(null)}
-          >
-            <option value="">Swap in who?</option>
-            {waitingPlayers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <>
-            <span>{name}</span>
-            <button
-              className="court-swap-btn"
-              onClick={() => setSwappingId(id)}
-              disabled={waitingPlayers.length === 0}
-              aria-label={`Substitute for ${name}`}
-              title="Substitute this player"
-            >
-              ⇄
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
+  const teamARows = teamAIds.map((id, i) => ({ id, name: teamAName[i] }));
+  const teamBRows = teamBIds.map((id, i) => ({ id, name: teamBName[i] }));
 
   return (
     <div className="court-card">
@@ -157,19 +103,34 @@ export default function CourtCard({
           <div className="court-teams">
             <div className="team team-a">
               <div className="team-label">Team A</div>
-              <div className="team-names">
-                {teamAIds.map((id, i) => renderPlayerRow(id, teamAName[i]))}
-              </div>
+              {teamARows.map((player) => (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  court={court}
+                  waitingPlayers={waitingPlayers}
+                  swappingId={swappingId}
+                  setSwappingId={setSwappingId}
+                  onSubstitute={onSubstitute}
+                />
+              ))}
             </div>
             <span className="vs">vs</span>
             <div className="team team-b">
               <div className="team-label">Team B</div>
-              <div className="team-names">
-                {teamBIds.map((id, i) => renderPlayerRow(id, teamBName[i]))}
-              </div>
+              {teamBRows.map((player) => (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  court={court}
+                  waitingPlayers={waitingPlayers}
+                  swappingId={swappingId}
+                  setSwappingId={setSwappingId}
+                  onSubstitute={onSubstitute}
+                />
+              ))}
             </div>
           </div>
-          <p className="court-swap-hint">Tap ⇄ next to a name to substitute in someone from the queue.</p>
 
           <div className="live-score-row">
             <div className="live-score-team">
@@ -265,6 +226,52 @@ export default function CourtCard({
             Enter exact score instead
           </button>
         </>
+      )}
+    </div>
+  );
+}
+
+// One player's row inside a live team box: their name, plus a ⇄ button
+// that opens an inline picker of currently-waiting players to swap in.
+// For emergencies — an injury, someone has to leave, a walk-in taking
+// an open spot — without ending the game or touching the score.
+function PlayerRow({ player, court, waitingPlayers, swappingId, setSwappingId, onSubstitute }) {
+  const isSwapping = swappingId === player.id;
+
+  return (
+    <div className="court-player-row">
+      <span className="court-player-name">{player.name}</span>
+      {!isSwapping && (
+        <button
+          className="court-swap-btn"
+          onClick={() => setSwappingId(player.id)}
+          aria-label={`Substitute for ${player.name}`}
+          title="Substitute this player"
+        >
+          ⇄
+        </button>
+      )}
+      {isSwapping && (
+        <select
+          className="court-swap-select"
+          autoFocus
+          defaultValue=""
+          onChange={(e) => {
+            const incomingId = e.target.value;
+            setSwappingId(null);
+            if (incomingId) onSubstitute(court.id, player.id, incomingId);
+          }}
+          onBlur={() => setSwappingId(null)}
+        >
+          <option value="" disabled>
+            Swap in…
+          </option>
+          {waitingPlayers.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       )}
     </div>
   );

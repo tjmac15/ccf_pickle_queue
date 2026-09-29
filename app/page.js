@@ -11,6 +11,7 @@ import {
   adjustLiveScore,
   addToStaging,
   autoFillStaging,
+  autoFillAllStaging,
   removeFromStaging,
   reorderQueue,
   startStagedMatch,
@@ -128,13 +129,17 @@ export default function Home() {
     const emptyCourts = visibleCourts.filter((court) => (court.staged || []).length === 0);
     if (emptyCourts.length === 0) return;
     autoFillInProgress.current = true;
-    (async () => {
-      for (const court of emptyCourts) await autoFillStaging(court.id);
-    })().catch((error) => {
-      console.error("Couldn't automatically fill Up Next:", error);
-    }).finally(() => {
-      autoFillInProgress.current = false;
-    });
+    // One atomic pass across every empty court at once — not a loop of
+    // separate calls — so 2+ courts finishing games around the same time
+    // can't step on each other's reads/writes and leave a box jumbled or
+    // empty.
+    autoFillAllStaging(emptyCourts.map((court) => court.id))
+      .catch((error) => {
+        console.error("Couldn't automatically fill Up Next:", error);
+      })
+      .finally(() => {
+        autoFillInProgress.current = false;
+      });
   }, [ready, visibleCourts, waitingPlayers.length]);
 
   // Manual start: an organizer taps "Start game" on an idle court once
@@ -174,6 +179,19 @@ export default function Home() {
     }
   }
 
+  // Emergency mid-game swap: replaces one player on a live court with
+  // someone currently waiting, without ending the game or touching the
+  // score. Whoever is on the court when the game is finished is who
+  // gets credited with the game — see finishGame.
+  async function handleSubstitute(courtId, outgoingPlayerId, incomingPlayerId) {
+    const result = await substitutePlayer(courtId, outgoingPlayerId, incomingPlayerId);
+    if (!result.ok && result.reason === "player-not-waiting") {
+      alert("That player is no longer waiting in the queue. Pick someone else.");
+    } else if (!result.ok) {
+      alert("Couldn't make that substitution — try again.");
+    }
+  }
+
   // Reorder the queue by swapping a player up or down one spot.
   async function handleReorder(playerId, direction) {
     const ids = waitingPlayers.map((p) => p.id);
@@ -195,13 +213,6 @@ export default function Home() {
     });
   }
 
-  // Swaps a different player into a live match — emergencies, someone
-  // has to leave mid-game, etc. Games-played still only counts whoever
-  // is on the court when the game finishes, so this just works.
-  async function handleSubstitute(courtId, outgoingId, incomingId) {
-    return substitutePlayer(courtId, outgoingId, incomingId);
-  }
-
   // Reorder the whole queue at once — used by drag-and-drop, where the
   // final position (not a single up/down step) is what we know.
   async function handleReorderFull(newOrderedIds) {
@@ -216,12 +227,18 @@ export default function Home() {
     if (!window.confirm(confirmMsg)) return;
 
     setEndingSession(true);
-    const standings = await endSession();
-    setEndingSession(false);
-    setSessionSummary({
-      standings,
-      totalGames: Math.round(standings.reduce((sum, p) => sum + p.gamesPlayed, 0) / 4),
-    });
+    try {
+      const standings = await endSession();
+      setSessionSummary({
+        standings,
+        totalGames: Math.round(standings.reduce((sum, p) => sum + p.gamesPlayed, 0) / 4),
+      });
+    } catch (error) {
+      console.error("Couldn't end the session:", error);
+      alert("Couldn't end the session — check your connection and try again.");
+    } finally {
+      setEndingSession(false);
+    }
   }
 
   return (
