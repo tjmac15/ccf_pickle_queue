@@ -19,6 +19,8 @@ export default function RegisterForm() {
       setName("");
     } else if (result.reason === "already-in") {
       setMsg("That name is already in the queue or on a court.");
+    } else if (result.reason === "not-loaded") {
+      setMsg("Still loading the queue — try again in a moment.");
     } else {
       setMsg("Enter a name to join the queue.");
     }

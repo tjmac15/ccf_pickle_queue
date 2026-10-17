@@ -11,12 +11,12 @@ export default function SettingsPanel({ settings, onClose }) {
   if (!settings) return null;
 
   async function update(patch) {
-    await setDoc(doc(db, "config", "settings"), patch, { merge: true });
+    setDoc(doc(db, "config", "settings"), patch, { merge: true }).catch((e) => console.error(e));
     if (patch.courtCount) {
-      await ensureCourtsExist(patch.courtCount, settings.gameMinutes);
+      ensureCourtsExist(patch.courtCount, settings.gameMinutes);
     }
     if (patch.gameMinutes) {
-      await setAllCourtsMinutes(settings.courtCount, patch.gameMinutes);
+      setAllCourtsMinutes(settings.courtCount, patch.gameMinutes);
     }
   }
 

@@ -18,6 +18,7 @@ import {
   substitutePlayer,
   finishGame,
   endSession,
+  syncLocalState,
   DEFAULT_SETTINGS,
 } from "../lib/queueLogic";
 
@@ -117,6 +118,9 @@ export default function Home() {
   const ready = fresh.settings && fresh.courts && fresh.players;
   const showLoading = !(loaded.courts && loaded.players);
 
+  // Give the action layer the live data it decides from (no server reads).
+  syncLocalState({ courts, players, settings, loaded: loaded.players && loaded.courts });
+
   const waitingPlayers = useMemo(
     () =>
       players
@@ -174,7 +178,7 @@ export default function Home() {
   }, [ready, visibleCourts, waitingPlayers]);
 
   // Manual start: an organizer taps "Start game" on an idle court once
-  // enough people are waiting. The transaction still protects against
+  // enough people are waiting. (Writes are batched and applied instantly; see lib/queueLogic.js.) Previously guarded against
   // two people tapping at the same instant on different devices.
   async function handleStartGame(courtId, stagedIds) {
     if (stagedIds?.length === 4) {
