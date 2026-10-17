@@ -42,30 +42,42 @@ export default function Home() {
   const [endingSession, setEndingSession] = useState(false);
   const [builderCourtId, setBuilderCourtId] = useState(null);
   const [tab, setTab] = useState("queue");
-  const [ready, setReady] = useState(false);
+  // Which listeners have delivered data, and whether it came from the
+  // network (fresh) or only the on-device cache (possibly stale).
+  const [loaded, setLoaded] = useState({ settings: false, courts: false, players: false });
+  const [fresh, setFresh] = useState({ settings: false, courts: false, players: false });
   const autoFillInProgress = useRef(false);
+  const bootstrapped = useRef({ settings: false, courts: false });
 
-  // Bootstrap: make sure config + court docs exist on first-ever load.
+  function markLoaded(key, snap) {
+    setLoaded((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    if (!snap.metadata.fromCache) setFresh((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+  }
+
+  // Listeners attach immediately on page load — they no longer wait for a
+  // "make sure the docs exist" round-trip to the server. On a slow
+  // connection that wait was what left every list blank; now whatever is
+  // in the on-device cache paints right away and live data replaces it.
   useEffect(() => {
-    (async () => {
-      await ensureSettingsExist();
-      await ensureCourtsExist(DEFAULT_SETTINGS.courtCount);
-      setReady(true);
-    })();
+    const unsub = onSnapshot(
+      doc(db, "config", "settings"),
+      { includeMetadataChanges: true },
+      (snap) => {
+        if (snap.exists()) setSettings(snap.data());
+        markLoaded("settings", snap);
+        // Only create the settings doc after the SERVER confirms it's missing.
+        if (!snap.metadata.fromCache && !snap.exists() && !bootstrapped.current.settings) {
+          bootstrapped.current.settings = true;
+          ensureSettingsExist().catch((e) => console.error(e));
+        }
+      }
+    );
+    return unsub;
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    const unsub = onSnapshot(doc(db, "config", "settings"), (snap) => {
-      if (snap.exists()) setSettings(snap.data());
-    });
-    return unsub;
-  }, [ready]);
-
-  useEffect(() => {
-    if (!ready) return;
     const q = query(collection(db, "courts"), orderBy("number", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
       const list = snap.docs.map((d) => {
         const data = d.data({ serverTimestamps: "estimate" });
         return {
@@ -75,21 +87,35 @@ export default function Home() {
         };
       });
       setCourts(list);
+      markLoaded("courts", snap);
+      if (!snap.metadata.fromCache && snap.empty && !bootstrapped.current.courts) {
+        bootstrapped.current.courts = true;
+        ensureCourtsExist(DEFAULT_SETTINGS.courtCount).catch((e) => console.error(e));
+      }
     });
     return unsub;
-  }, [ready]);
+  }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    const unsub = onSnapshot(collection(db, "players"), (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data({ serverTimestamps: "estimate" }),
-      }));
-      setPlayers(list);
-    });
+    const unsub = onSnapshot(
+      collection(db, "players"),
+      { includeMetadataChanges: true },
+      (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data({ serverTimestamps: "estimate" }),
+        }));
+        setPlayers(list);
+        markLoaded("players", snap);
+      }
+    );
     return unsub;
-  }, [ready]);
+  }, []);
+
+  // Background actions (auto-fill) only run on confirmed-fresh data, so a
+  // stale cached queue can never trigger a wrong auto-fill.
+  const ready = fresh.settings && fresh.courts && fresh.players;
+  const showLoading = !(loaded.courts && loaded.players);
 
   const waitingPlayers = useMemo(
     () =>
@@ -117,7 +143,7 @@ export default function Home() {
       const elsewhere = new Set();
       visibleCourts.forEach((otherCourt) => {
         if (otherCourt.id === court.id) return;
-        (otherCourt.staged || []).forEach((id) => elsewhere.add(id));
+        (otherCourt.staged || []).forEach((id) => id && elsewhere.add(id));
       });
       stagedByCourt.set(court.id, elsewhere);
     });
@@ -126,7 +152,12 @@ export default function Home() {
 
   useEffect(() => {
     if (!ready || autoFillInProgress.current || waitingPlayers.length < 4) return;
-    const emptyCourts = visibleCourts.filter((court) => (court.staged || []).length === 0);
+    // "Empty" means no one in the box is actually still waiting — leftover
+    // ids of people who left or started elsewhere must not block a refill.
+    const waitingIds = new Set(waitingPlayers.map((p) => p.id));
+    const emptyCourts = visibleCourts.filter(
+      (court) => !(court.staged || []).some((id) => id && waitingIds.has(id))
+    );
     if (emptyCourts.length === 0) return;
     autoFillInProgress.current = true;
     // One atomic pass across every empty court at once — not a loop of
@@ -140,7 +171,7 @@ export default function Home() {
       .finally(() => {
         autoFillInProgress.current = false;
       });
-  }, [ready, visibleCourts, waitingPlayers.length]);
+  }, [ready, visibleCourts, waitingPlayers]);
 
   // Manual start: an organizer taps "Start game" on an idle court once
   // enough people are waiting. The transaction still protects against
@@ -267,12 +298,28 @@ export default function Home() {
         </div>
       </div>
 
+      {(showLoading || !ready) && (
+        <div
+          style={{
+            margin: "0 0 12px",
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(224,117,47,0.12)",
+            fontSize: 13,
+          }}
+        >
+          {showLoading
+            ? "Loading the latest queue…"
+            : "Showing saved data — reconnecting to get the latest…"}
+        </div>
+      )}
+
       <div className="layout">
         <div className="col">
           <RegisterForm />
           {visibleCourts.map((court) => {
-            const nextPlayers = (court.staged || [])
-              .map((id) => waitingPlayers.find((player) => player.id === id))
+            const nextPlayers = [0, 1, 2, 3]
+              .map((i) => waitingPlayers.find((player) => player.id === (court.staged || [])[i]))
               .filter(Boolean);
 
             return (

@@ -30,6 +30,7 @@ export default function ScoreModal({ pending, autoRequeue, onClose }) {
   const teamBLabel = pending.teamB.map(nameFor).join(" & ");
 
   async function submit({ withScore, winner }) {
+    if (busy) return;
     setBusy(true);
     await finishGame({
       courtId: pending.courtId,

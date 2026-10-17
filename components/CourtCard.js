@@ -134,7 +134,7 @@ export default function CourtCard({ court, waitingCount, waitingPlayers = [], ne
 
           <div className="live-score-row">
             <div className="live-score-team">
-              <button onClick={() => onAdjustScore(court.id, "A", -1)} aria-label="Decrease Team A score">
+              <button disabled={!(court.liveScoreA > 0)} onClick={() => onAdjustScore(court.id, "A", -1)} aria-label="Decrease Team A score">
                 −
               </button>
               <span className="live-score-value">{court.liveScoreA || 0}</span>
@@ -144,7 +144,7 @@ export default function CourtCard({ court, waitingCount, waitingPlayers = [], ne
             </div>
             <span className="live-score-label">score</span>
             <div className="live-score-team">
-              <button onClick={() => onAdjustScore(court.id, "B", -1)} aria-label="Decrease Team B score">
+              <button disabled={!(court.liveScoreB > 0)} onClick={() => onAdjustScore(court.id, "B", -1)} aria-label="Decrease Team B score">
                 −
               </button>
               <span className="live-score-value">{court.liveScoreB || 0}</span>

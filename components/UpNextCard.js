@@ -4,15 +4,17 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
   // Only count ids that still resolve to an actual waiting player — if
   // someone staged here left the queue, their slot just opens back up
   // instead of silently blocking the match from starting.
-  const staged = (court.staged || [])
-    .map((id) => waitingPlayers.find((p) => p.id === id))
-    .filter(Boolean);
+  // Slot-preserving: slot i is whoever sits at court.staged[i] (or empty),
+  // so removing/swapping one person never shifts anyone's team.
+  const slots = [0, 1, 2, 3].map(
+    (i) => waitingPlayers.find((p) => p.id === (court.staged || [])[i]) || null
+  );
+  const staged = slots.filter(Boolean);
 
   const availablePlayers = waitingPlayers.filter(
     (p) => !staged.some((s) => s.id === p.id) && !stagedElsewhereIds.has(p.id)
   );
 
-  const slots = [0, 1, 2, 3].map((i) => staged[i] || null);
   const isCourtAvailable = court.status === "idle";
   const canStart = staged.length === 4 && isCourtAvailable;
 
