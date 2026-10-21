@@ -1209,3 +1209,77 @@ button {
   background: #fff;
   color: var(--ink);
 }
+
+/* ---- v7: skill badges, modes, serve tracking, results ---- */
+.skill-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; vertical-align: middle;
+}
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; align-items: center; }
+.chip {
+  border: 1.5px solid var(--sage); background: var(--bg); color: var(--ink);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.chip.static { cursor: default; border-color: transparent; background: transparent; color: var(--muted); }
+.chip.primary { background: var(--court); border-color: var(--court); color: #fff; margin-left: auto; }
+.mode-list { display: grid; gap: 10px; margin-top: 12px; }
+.mode-option {
+  text-align: left; border: 1.5px solid var(--sage); background: var(--bg); border-radius: 12px;
+  padding: 12px 14px; cursor: pointer; display: grid; gap: 4px; color: var(--ink);
+}
+.mode-option span { font-size: 13px; color: var(--muted); }
+.mode-option.active { background: var(--court); color: #fff; border-color: var(--court); }
+.mode-option.active span { color: rgba(255,255,255,0.85); }
+.mode-option.disabled { opacity: 0.55; cursor: default; }
+.mode-option em { font-style: normal; font-size: 11px; background: var(--line); padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+.court-head-right { display: flex; align-items: center; gap: 8px; }
+.court-icon-btn {
+  background: rgba(255,255,255,0.16); border: none; color: #fff; border-radius: 8px;
+  width: 32px; height: 32px; font-size: 15px; cursor: pointer;
+}
+.court-sub { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 4px; display: flex; gap: 10px; align-items: center; position: relative; z-index: 1; }
+.court-format { background: rgba(255,255,255,0.16); color: #fff; border: none; border-radius: 6px; padding: 3px 6px; font-size: 12px; }
+.court-format option { color: #000; }
+.court-next-players span { display: flex; align-items: center; gap: 6px; }
+.upnext-slot-name { display: inline-flex; align-items: center; gap: 6px; }
+.register-skill { padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--sage); background: #fff; font-size: 14px; }
+.edit-input { width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--sage); font-size: 15px; margin-top: 6px; background: #fff; }
+.court-player-name { flex: 1; }
+.live-score-team { flex-wrap: wrap; justify-content: center; }
+.serve-pill {
+  flex-basis: 100%; text-align: center; font-size: 11px; font-weight: 700; padding: 3px 8px;
+  border-radius: 999px; background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.8);
+}
+.serve-pill.serving { background: var(--ball); color: var(--court-dark); }
+.sideout-btn { background: rgba(255,255,255,0.28) !important; }
+.live-score-team button:disabled { opacity: 0.35; }
+.call-line { position: relative; z-index: 1; text-align: center; font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 8px; }
+.gameover-banner {
+  position: relative; z-index: 1; margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+  background: var(--ball); color: var(--court-dark); font-size: 13px; font-weight: 700; text-align: center;
+}
+.quick-win-btn.suggested { outline: 3px solid var(--ball); }
+.court-foot-links { display: flex; justify-content: center; gap: 18px; position: relative; z-index: 1; }
+.court-card:fullscreen { padding: 5vh 6vw; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
+.court-card:fullscreen .live-score-value { font-size: 12vw; min-width: 1.4em; }
+.court-card:fullscreen .court-player-name, .court-card:fullscreen .team-label { font-size: 3vw; }
+.court-card:fullscreen .timer { font-size: 12vw; }
+.result-row { border-top: 1px solid var(--line); padding: 10px 0; }
+.result-meta { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.result-team { display: flex; justify-content: space-between; font-size: 14px; padding: 2px 0; }
+.result-team.won { font-weight: 700; color: var(--court); }
+.export-btn { margin: 4px 0 8px; }
+
+/* ---- v8: live view, share modal ---- */
+.share-link { padding: 10px 12px; border: 1px dashed var(--sage); border-radius: 8px; font-size: 13px; word-break: break-all; margin: 8px 0; background: var(--bg); }
+.file-btn { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.view-banner { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--line); font-size: 13px; }
+.view-banner.stale { background: rgba(224,117,47,0.18); }
+.view-score { position: relative; z-index: 1; text-align: center; font-family: var(--font-display), sans-serif; font-size: 40px; font-weight: 700; margin: 8px 0; }
+.view-score span { opacity: 0.5; margin: 0 8px; }
+.view-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.view-row .queue-name { flex: 1; display: flex; gap: 6px; align-items: center; }
+.view-next { grid-template-columns: 1fr 1fr; }
+.view-next span { background: var(--bg); color: var(--ink); }
+.queue-upnext-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--ball); color: var(--court-dark); white-space: nowrap; }

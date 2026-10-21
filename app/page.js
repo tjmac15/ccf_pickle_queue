@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, onSnapshot, orderBy, query } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ensureSettingsExist,
-  ensureCourtsExist,
+  useStore,
+  flushPending,
   fillCourtIfPossible,
   adjustCourtMinutes,
   adjustLiveScore,
@@ -18,8 +16,14 @@ import {
   substitutePlayer,
   finishGame,
   endSession,
-  syncLocalState,
-  DEFAULT_SETTINGS,
+  scorePoint,
+  cancelMatch,
+  setCourtFormat,
+  setCourtSound,
+  updateSettings,
+  redrawStaging,
+  slotCount,
+  MODES,
 } from "../lib/queueLogic";
 
 import RegisterForm from "../components/RegisterForm";
@@ -32,102 +36,51 @@ import ScoreModal from "../components/ScoreModal";
 import SettingsPanel from "../components/SettingsPanel";
 import SessionSummaryModal from "../components/SessionSummaryModal";
 import MatchBuilderModal from "../components/MatchBuilderModal";
+import EditPlayerModal from "../components/EditPlayerModal";
+import ModeModal from "../components/ModeModal";
+import LiveShareModal from "../components/LiveShareModal";
+import ResultsPanel from "../components/ResultsPanel";
 
 export default function Home() {
-  const [settings, setSettings] = useState(null);
-  const [courts, setCourts] = useState([]);
-  const [players, setPlayers] = useState([]);
+  // Everything comes from this device's own saved session — no database
+  // reads while playing. See lib/queueLogic.js.
+  const { settings, courts, players, pending, matches, broadcast } = useStore();
+  const [showShare, setShowShare] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState(null);
+  const [showMode, setShowMode] = useState(false);
   const [pendingScore, setPendingScore] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [sessionSummary, setSessionSummary] = useState(null);
   const [endingSession, setEndingSession] = useState(false);
   const [builderCourtId, setBuilderCourtId] = useState(null);
   const [tab, setTab] = useState("queue");
-  // Which listeners have delivered data, and whether it came from the
-  // network (fresh) or only the on-device cache (possibly stale).
-  const [loaded, setLoaded] = useState({ settings: false, courts: false, players: false });
-  const [fresh, setFresh] = useState({ settings: false, courts: false, players: false });
-  const autoFillInProgress = useRef(false);
-  const bootstrapped = useRef({ settings: false, courts: false });
 
-  function markLoaded(key, snap) {
-    setLoaded((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
-    if (!snap.metadata.fromCache) setFresh((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
-  }
-
-  // Listeners attach immediately on page load — they no longer wait for a
-  // "make sure the docs exist" round-trip to the server. On a slow
-  // connection that wait was what left every list blank; now whatever is
-  // in the on-device cache paints right away and live data replaces it.
+  // Upload any finished sessions that are still waiting — on page load
+  // and whenever the connection comes back.
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "config", "settings"),
-      { includeMetadataChanges: true },
-      (snap) => {
-        if (snap.exists()) setSettings(snap.data());
-        markLoaded("settings", snap);
-        // Only create the settings doc after the SERVER confirms it's missing.
-        if (!snap.metadata.fromCache && !snap.exists() && !bootstrapped.current.settings) {
-          bootstrapped.current.settings = true;
-          ensureSettingsExist().catch((e) => console.error(e));
-        }
-      }
-    );
-    return unsub;
+    flushPending();
+    window.addEventListener("online", flushPending);
+    return () => window.removeEventListener("online", flushPending);
   }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, "courts"), orderBy("number", "asc"));
-    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
-      const list = snap.docs.map((d) => {
-        const data = d.data({ serverTimestamps: "estimate" });
-        return {
-          id: d.id,
-          ...data,
-          startTime: data.startTime ? data.startTime.toDate() : null,
-        };
-      });
-      setCourts(list);
-      markLoaded("courts", snap);
-      if (!snap.metadata.fromCache && snap.empty && !bootstrapped.current.courts) {
-        bootstrapped.current.courts = true;
-        ensureCourtsExist(DEFAULT_SETTINGS.courtCount).catch((e) => console.error(e));
-      }
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "players"),
-      { includeMetadataChanges: true },
-      (snap) => {
-        const list = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data({ serverTimestamps: "estimate" }),
-        }));
-        setPlayers(list);
-        markLoaded("players", snap);
-      }
-    );
-    return unsub;
-  }, []);
-
-  // Background actions (auto-fill) only run on confirmed-fresh data, so a
-  // stale cached queue can never trigger a wrong auto-fill.
-  const ready = fresh.settings && fresh.courts && fresh.players;
-  const showLoading = !(loaded.courts && loaded.players);
-
-  // Give the action layer the live data it decides from (no server reads).
-  syncLocalState({ courts, players, settings, loaded: loaded.players && loaded.courts });
 
   const waitingPlayers = useMemo(
     () =>
       players
         .filter((p) => p.status === "waiting")
-        .sort((a, b) => (a.joinedAt?.toMillis() || 0) - (b.joinedAt?.toMillis() || 0)),
+        .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)),
     [players]
   );
+
+  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+
+  // Which court (if any) each waiting player is already lined up for.
+  const stagedCourtByPlayer = useMemo(() => {
+    const map = new Map();
+    courts
+      .filter((c) => c.number <= settings.courtCount)
+      .forEach((c) => (c.staged || []).forEach((id) => id && !map.has(id) && map.set(id, c.number)));
+    return map;
+  }, [courts, settings.courtCount]);
 
   const playingPlayers = useMemo(
     () => players.filter((p) => p.status === "playing"),
@@ -154,34 +107,12 @@ export default function Home() {
     return stagedByCourt;
   }, [visibleCourts]);
 
-  useEffect(() => {
-    if (!ready || autoFillInProgress.current || waitingPlayers.length < 4) return;
-    // "Empty" means no one in the box is actually still waiting — leftover
-    // ids of people who left or started elsewhere must not block a refill.
-    const waitingIds = new Set(waitingPlayers.map((p) => p.id));
-    const emptyCourts = visibleCourts.filter(
-      (court) => !(court.staged || []).some((id) => id && waitingIds.has(id))
-    );
-    if (emptyCourts.length === 0) return;
-    autoFillInProgress.current = true;
-    // One atomic pass across every empty court at once — not a loop of
-    // separate calls — so 2+ courts finishing games around the same time
-    // can't step on each other's reads/writes and leave a box jumbled or
-    // empty.
-    autoFillAllStaging(emptyCourts.map((court) => court.id))
-      .catch((error) => {
-        console.error("Couldn't automatically fill Up Next:", error);
-      })
-      .finally(() => {
-        autoFillInProgress.current = false;
-      });
-  }, [ready, visibleCourts, waitingPlayers]);
-
   // Manual start: an organizer taps "Start game" on an idle court once
   // enough people are waiting. (Writes are batched and applied instantly; see lib/queueLogic.js.) Previously guarded against
   // two people tapping at the same instant on different devices.
   async function handleStartGame(courtId, stagedIds) {
-    if (stagedIds?.length === 4) {
+    const court = courts.find((c) => c.id === courtId);
+    if (stagedIds?.length === slotCount(court)) {
       await handleStartStagedMatch(courtId, stagedIds);
       return;
     }
@@ -270,7 +201,7 @@ export default function Home() {
       });
     } catch (error) {
       console.error("Couldn't end the session:", error);
-      alert("Couldn't end the session — check your connection and try again.");
+      alert("Couldn't end the session. Please try again.");
     } finally {
       setEndingSession(false);
     }
@@ -296,13 +227,16 @@ export default function Home() {
           <button className="gear-btn" onClick={handleEndSession} disabled={endingSession}>
             {endingSession ? "Ending…" : "End session"}
           </button>
+          <button className="gear-btn" onClick={() => setShowShare(true)}>
+            {broadcast?.on ? "Live view ●" : "Live view"}
+          </button>
           <button className="gear-btn" onClick={() => setShowSettings(true)}>
             Settings
           </button>
         </div>
       </div>
 
-      {(showLoading || !ready) && (
+      {pending.length > 0 && (
         <div
           style={{
             margin: "0 0 12px",
@@ -312,17 +246,28 @@ export default function Home() {
             fontSize: 13,
           }}
         >
-          {showLoading
-            ? "Loading the latest queue…"
-            : "Showing saved data — reconnecting to get the latest…"}
+          {pending.length} finished session{pending.length === 1 ? "" : "s"} saved on this device,
+          waiting for internet to upload to History. Keep this page on this device until it clears.
         </div>
       )}
 
       <div className="layout">
         <div className="col">
           <RegisterForm />
+          <div className="toolbar">
+            <button className="chip" onClick={() => setShowMode(true)}>
+              {MODES.find((m) => m.id === settings.mode)?.name || "First In, First Out"} ▾
+            </button>
+            <span className="chip static">
+              {players.filter((p) => p.status === "waiting" || p.status === "playing").length} players ·{" "}
+              {playingPlayers.length} on court · {waitingPlayers.length} waiting
+            </span>
+            <button className="chip primary" onClick={() => updateSettings({ courtCount: settings.courtCount + 1 })}>
+              + Add court
+            </button>
+          </div>
           {visibleCourts.map((court) => {
-            const nextPlayers = [0, 1, 2, 3]
+            const nextPlayers = Array.from({ length: slotCount(court) }, (_, i) => i)
               .map((i) => waitingPlayers.find((player) => player.id === (court.staged || [])[i]))
               .filter(Boolean);
 
@@ -330,6 +275,14 @@ export default function Home() {
               <div className="court-block" key={court.id}>
               <CourtCard
                 court={court}
+                settings={settings}
+                playersById={playersById}
+                canRemove={court.number === settings.courtCount && settings.courtCount > 1 && court.status === "idle"}
+                onRemoveCourt={() => updateSettings({ courtCount: settings.courtCount - 1 })}
+                onScorePoint={scorePoint}
+                onCancelMatch={cancelMatch}
+                onSetFormat={setCourtFormat}
+                onSetSound={setCourtSound}
                 waitingCount={waitingPlayers.length}
                 waitingPlayers={waitingPlayers}
                 nextPlayers={nextPlayers}
@@ -346,6 +299,7 @@ export default function Home() {
                 waitingPlayers={waitingPlayers}
                 stagedElsewhereIds={stagedElsewhereIdsByCourt.get(court.id) || new Set()}
                 onAutoFill={handleAutoFill}
+                onRedraw={redrawStaging}
                 onRemove={removeFromStaging}
                 onAdd={addToStaging}
                 onStart={handleStartStagedMatch}
@@ -363,6 +317,12 @@ export default function Home() {
                 onClick={() => setTab("queue")}
               >
                 Queue
+              </button>
+              <button
+                className={`tab-btn ${tab === "results" ? "active" : ""}`}
+                onClick={() => setTab("results")}
+              >
+                Results
               </button>
               <button
                 className={`tab-btn ${tab === "leaderboard" ? "active" : ""}`}
@@ -384,10 +344,13 @@ export default function Home() {
               playingPlayers={playingPlayers}
               onReorder={handleReorder}
               onReorderFull={handleReorderFull}
+              onEditPlayer={setEditingPlayer}
+              stagedCourtByPlayer={stagedCourtByPlayer}
             />
           )}
+          {tab === "results" && <ResultsPanel matches={matches} players={players} />}
           {tab === "leaderboard" && <Leaderboard players={players} />}
-          {tab === "history" && <SessionHistoryPanel />}
+          {tab === "history" && <SessionHistoryPanel pending={pending} />}
         </div>
       </div>
       
@@ -407,8 +370,12 @@ export default function Home() {
         <SettingsPanel settings={settings} onClose={() => setShowSettings(false)} />
       )}
       <SessionSummaryModal summary={sessionSummary} onClose={() => setSessionSummary(null)} />
+      <EditPlayerModal player={editingPlayer} onClose={() => setEditingPlayer(null)} />
+      <LiveShareModal open={showShare} broadcast={broadcast || { on: false }} onClose={() => setShowShare(false)} />
+      <ModeModal open={showMode} mode={settings.mode} onClose={() => setShowMode(false)} />
       <MatchBuilderModal
         courtId={builderCourtId}
+        size={slotCount(courts.find((c) => c.id === builderCourtId))}
         waitingPlayers={waitingPlayers}
         onClose={() => setBuilderCourtId(null)}
       />

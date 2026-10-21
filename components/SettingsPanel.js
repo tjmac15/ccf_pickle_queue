@@ -1,8 +1,6 @@
 "use client";
 
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { ensureCourtsExist, setAllCourtsMinutes } from "../lib/queueLogic";
+import { updateSettings } from "../lib/queueLogic";
 import { useEscapeKey } from "../lib/useEscapeKey";
 
 export default function SettingsPanel({ settings, onClose }) {
@@ -10,14 +8,8 @@ export default function SettingsPanel({ settings, onClose }) {
 
   if (!settings) return null;
 
-  async function update(patch) {
-    setDoc(doc(db, "config", "settings"), patch, { merge: true }).catch((e) => console.error(e));
-    if (patch.courtCount) {
-      ensureCourtsExist(patch.courtCount, settings.gameMinutes);
-    }
-    if (patch.gameMinutes) {
-      setAllCourtsMinutes(settings.courtCount, patch.gameMinutes);
-    }
+  function update(patch) {
+    updateSettings(patch);
   }
 
   return (
@@ -28,7 +20,7 @@ export default function SettingsPanel({ settings, onClose }) {
         </button>
         <h3>Open play settings</h3>
         <p className="hint">
-          Changes sync to every device immediately. Game length here sets every
+          Saved on this device. Game length here sets every
           court at once — you can still nudge an individual court up or down
           with the +/− next to its timer.
         </p>
@@ -60,6 +52,38 @@ export default function SettingsPanel({ settings, onClose }) {
             <button onClick={() => update({ gameMinutes: settings.gameMinutes + 1 })}>
               +
             </button>
+          </div>
+        </div>
+
+        <div className="settings-field">
+          <label>Points to win</label>
+          <div className="stepper">
+            <button onClick={() => update({ pointsToWin: Math.max(1, (settings.pointsToWin || 11) - 1) })}>−</button>
+            <span>{settings.pointsToWin || 11}</span>
+            <button onClick={() => update({ pointsToWin: (settings.pointsToWin || 11) + 1 })}>+</button>
+          </div>
+        </div>
+
+        <div className="settings-field">
+          <label>Win by 2</label>
+          <button className={`toggle ${settings.winByTwo ? "on" : ""}`} onClick={() => update({ winByTwo: !settings.winByTwo })}>
+            <span className="knob" />
+          </button>
+        </div>
+
+        <div className="settings-field">
+          <label>Track serving &amp; side-outs</label>
+          <button className={`toggle ${settings.trackServe ? "on" : ""}`} onClick={() => update({ trackServe: !settings.trackServe })}>
+            <span className="knob" />
+          </button>
+        </div>
+
+        <div className="settings-field">
+          <label>King of the Court: max wins in a row</label>
+          <div className="stepper">
+            <button onClick={() => update({ kingMaxWins: Math.max(1, (settings.kingMaxWins || 2) - 1) })}>−</button>
+            <span>{settings.kingMaxWins || 2}</span>
+            <button onClick={() => update({ kingMaxWins: (settings.kingMaxWins || 2) + 1 })}>+</button>
           </div>
         </div>
 

@@ -1,13 +1,17 @@
 "use client";
 
-export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, onAutoFill, onRemove, onAdd, onStart }) {
-  // Only count ids that still resolve to an actual waiting player — if
-  // someone staged here left the queue, their slot just opens back up
-  // instead of silently blocking the match from starting.
+import SkillBadge from "./SkillBadge";
+import { slotCount } from "../lib/queueLogic";
+
+export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, onAutoFill, onRedraw, onRemove, onAdd, onStart }) {
+  const n = slotCount(court);
+  const half = n / 2;
+
   // Slot-preserving: slot i is whoever sits at court.staged[i] (or empty),
-  // so removing/swapping one person never shifts anyone's team.
-  const slots = [0, 1, 2, 3].map(
-    (i) => waitingPlayers.find((p) => p.id === (court.staged || [])[i]) || null
+  // so removing/swapping one person never shifts anyone's team. Anyone no
+  // longer waiting just shows as an open slot.
+  const slots = Array.from({ length: n }, (_, i) =>
+    waitingPlayers.find((p) => p.id === (court.staged || [])[i]) || null
   );
   const staged = slots.filter(Boolean);
 
@@ -16,13 +20,19 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
   );
 
   const isCourtAvailable = court.status === "idle";
-  const canStart = staged.length === 4 && isCourtAvailable;
+  const canStart = staged.length === n && isCourtAvailable;
+
+  const sum = (list) => list.reduce((t, p) => t + (p ? p.skill || 3 : 0), 0);
+  const skillText =
+    staged.length === n ? `Skill ${sum(slots.slice(0, half))} vs ${sum(slots.slice(half))}` : null;
 
   function renderSlot(player, key) {
     if (player) {
       return (
         <div className="upnext-slot filled" key={key}>
-          <span>{player.name}</span>
+          <span className="upnext-slot-name">
+            <SkillBadge skill={player.skill} /> {player.name}
+          </span>
           <button onClick={() => onRemove(court.id, player.id)} aria-label={`Remove ${player.name}`}>
             ×
           </button>
@@ -44,9 +54,8 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
         <select
           className="upnext-slot-select"
           defaultValue=""
-          // Native drag-and-drop doesn't work on iPad/touch at all, so
-          // this dropdown is the only reliable way to fill a slot there
-          // — keep it alongside the drag target rather than instead of it.
+          // Native drag-and-drop doesn't work on iPad/touch, so this
+          // dropdown is the reliable way to fill a slot there.
           onChange={(e) => {
             const playerId = e.target.value;
             if (playerId) onAdd(court.id, playerId);
@@ -58,7 +67,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           </option>
           {availablePlayers.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
+              {p.name} (skill {p.skill || 3})
             </option>
           ))}
         </select>
@@ -70,28 +79,31 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
     <div className="upnext-card">
       <div className="upnext-head">
         <h3>Up Next — Court {court.number}</h3>
-        <button className="upnext-autofill" onClick={() => onAutoFill(court.id)}>
-          Auto-fill
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="upnext-autofill" onClick={() => onAutoFill(court.id)}>
+            Auto-fill
+          </button>
+          <button className="upnext-autofill" onClick={() => onRedraw(court.id)} title="Clear and pick again from the line">
+            Redraw
+          </button>
+        </div>
       </div>
-      <p className="upnext-hint">Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them.</p>
+      <p className="upnext-hint">
+        Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them.
+        {skillText && <strong> {skillText}</strong>}
+        {court.king && <strong> · King of the court: {court.king.wins} win{court.king.wins === 1 ? "" : "s"} in a row</strong>}
+      </p>
       <div className="upnext-teams">
         <div className="upnext-team">
           <div className="upnext-team-label team-a">Team 1</div>
-          {renderSlot(slots[0], "slot-0")}
-          {renderSlot(slots[1], "slot-1")}
+          {slots.slice(0, half).map((p, i) => renderSlot(p, `slot-${i}`))}
         </div>
         <div className="upnext-team">
           <div className="upnext-team-label team-b">Team 2</div>
-          {renderSlot(slots[2], "slot-2")}
-          {renderSlot(slots[3], "slot-3")}
+          {slots.slice(half).map((p, i) => renderSlot(p, `slot-${half + i}`))}
         </div>
       </div>
-      <button
-        className="btn-primary upnext-start"
-        disabled={!canStart}
-        onClick={() => onStart(court.id, staged.map((p) => p.id))}
-      >
+      <button className="btn-primary upnext-start" disabled={!canStart} onClick={() => onStart(court.id, slots.map((p) => p && p.id))}>
         {isCourtAvailable ? "Start this match" : "Court currently in use"}
       </button>
     </div>

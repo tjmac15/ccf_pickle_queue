@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { withdrawPlayer } from "../lib/queueLogic";
+import SkillBadge from "./SkillBadge";
 
 function waitLabel(joinedAt, now) {
   if (!joinedAt) return "just joined";
-  const seconds = Math.max(0, Math.floor((now - joinedAt.toMillis()) / 1000));
+  const seconds = Math.max(0, Math.floor((now - joinedAt) / 1000));
   if (seconds < 60) return "just joined";
   const mins = Math.floor(seconds / 60);
   return `${mins} min`;
@@ -46,7 +47,7 @@ function SortSelect({ value, onChange, onClick, defaultLabel }) {
   );
 }
 
-export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, onReorderFull }) {
+export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, onReorderFull, onEditPlayer, stagedCourtByPlayer }) {
   const [now, setNow] = useState(Date.now());
   const [sortBy, setSortBy] = useState("default");
   const [manualOverride, setManualOverride] = useState(false);
@@ -132,7 +133,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
           {displayedPlaying.map((p) => (
             <div className="playing-row" key={p.id}>
               <span className="queue-status-tag playing">Playing</span>
-              <span className="queue-name">{p.name}</span>
+              <span className="queue-name"><SkillBadge skill={p.skill} /> {p.name}</span>
               <span className="queue-games">{gamesLabel(p.gamesPlayed)}</span>
               <span className="playing-court-tag">Court {p.courtId}</span>
             </div>
@@ -186,7 +187,11 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
               ⠿
             </span>
             <span className="queue-badge">No.{queuePosition + 1}</span>
-            <span className="queue-status-tag waiting">Waiting</span>
+            {stagedCourtByPlayer && stagedCourtByPlayer.get(p.id) ? (
+              <span className="queue-upnext-tag">Up next · C{stagedCourtByPlayer.get(p.id)}</span>
+            ) : (
+              <span className="queue-status-tag waiting">Waiting</span>
+            )}
             <span
               className="queue-name drag-source"
               draggable
@@ -197,7 +202,7 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
               }}
               title="Drag to an Up Next slot"
             >
-              {p.name}
+              <SkillBadge skill={p.skill} /> {p.name}
             </span>
             <span className="queue-games">{gamesLabel(p.gamesPlayed)}</span>
             <span className="queue-wait">{waitLabel(p.joinedAt, now)}</span>
@@ -223,6 +228,9 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
                 ↓
               </button>
             </div>
+            <button className="withdraw-btn" onClick={() => onEditPlayer(p)} aria-label={`Edit ${p.name}`}>
+              edit
+            </button>
             <button className="withdraw-btn" onClick={() => withdrawPlayer(p.id)}>
               leave
             </button>

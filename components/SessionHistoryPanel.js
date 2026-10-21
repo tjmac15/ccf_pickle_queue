@@ -6,7 +6,8 @@ import { db } from "../lib/firebase";
 
 function formatDate(ts) {
   if (!ts) return "…";
-  return ts.toDate().toLocaleString(undefined, {
+  const date = ts.toDate ? ts.toDate() : new Date(ts);
+  return date.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -15,8 +16,8 @@ function formatDate(ts) {
   });
 }
 
-export default function SessionHistoryPanel() {
-  const [sessions, setSessions] = useState([]);
+export default function SessionHistoryPanel({ pending = [] }) {
+  const [uploaded, setUploaded] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
@@ -26,11 +27,20 @@ export default function SessionHistoryPanel() {
         id: d.id,
         ...d.data({ serverTimestamps: "estimate" }),
       }));
-      setSessions(list);
-      setSelectedId((prev) => prev || (list[0] && list[0].id) || null);
+      setUploaded(list);
     });
     return unsub;
   }, []);
+
+  // Sessions still on this device (not uploaded yet) show up right away.
+  const sessions = [...pending, ...uploaded.filter((u) => !pending.some((p) => p.id === u.id))].sort(
+    (a, b) =>
+      (b.endedAt?.toMillis ? b.endedAt.toMillis() : b.endedAt || 0) -
+      (a.endedAt?.toMillis ? a.endedAt.toMillis() : a.endedAt || 0)
+  );
+  useEffect(() => {
+    setSelectedId((prev) => prev || (sessions[0] && sessions[0].id) || null);
+  }, [sessions.length]);
 
   const selected = sessions.find((s) => s.id === selectedId);
 
