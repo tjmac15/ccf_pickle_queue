@@ -1283,3 +1283,9 @@ button {
 .view-next { grid-template-columns: 1fr 1fr; }
 .view-next span { background: var(--bg); color: var(--ink); }
 .queue-upnext-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--ball); color: var(--court-dark); white-space: nowrap; }
+
+/* v9: two Up Next boxes per court */
+.upnext-badge { margin-left: 8px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.12); text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; }
+.upnext-badge.priority { background: var(--ball); color: var(--court-dark); }
+.upnext-card.upnext-second { opacity: 0.92; margin-top: 10px; }
+.queue-upnext-tag.second { background: rgba(255,255,255,0.14); color: inherit; }

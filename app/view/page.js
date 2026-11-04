@@ -105,6 +105,7 @@ export default function LiveView() {
                 );
               });
             const next = Array.from({ length: n }, (_, i) => view.byId.get((c.staged || [])[i])).filter((p) => p && p.status === "waiting");
+            const next2 = Array.from({ length: n }, (_, i) => view.byId.get((c.staged2 || [])[i])).filter((p) => p && p.status === "waiting");
             return (
               <div className="court-block" key={c.id}>
                 <div className="court-card">
@@ -135,13 +136,29 @@ export default function LiveView() {
                 </div>
                 <div className="upnext-card">
                   <div className="upnext-head">
-                    <h3>Up Next — Court {c.number}</h3>
+                    <h3>Up Next 1 — Court {c.number}</h3>
                   </div>
                   {next.length === 0 ? (
                     <div className="empty-note">Not set yet.</div>
                   ) : (
                     <div className="court-next-players view-next">
                       {next.map((p) => (
+                        <span key={p.id}>
+                          <SkillBadge skill={p.skill} /> {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="upnext-card upnext-second">
+                  <div className="upnext-head">
+                    <h3>Up Next 2 — Court {c.number}</h3>
+                  </div>
+                  {next2.length === 0 ? (
+                    <div className="empty-note">Not set yet.</div>
+                  ) : (
+                    <div className="court-next-players view-next">
+                      {next2.map((p) => (
                         <span key={p.id}>
                           <SkillBadge skill={p.skill} /> {p.name}
                         </span>

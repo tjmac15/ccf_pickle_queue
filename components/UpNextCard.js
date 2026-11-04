@@ -3,7 +3,8 @@
 import SkillBadge from "./SkillBadge";
 import { slotCount } from "../lib/queueLogic";
 
-export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, onAutoFill, onRedraw, onRemove, onAdd, onStart }) {
+export default function UpNextCard({ court, lane = "staged", waitingPlayers, stagedElsewhereIds, onAutoFill, onRedraw, onRemove, onAdd, onStart, onSwap }) {
+  const second = lane === "staged2";
   const n = slotCount(court);
   const half = n / 2;
 
@@ -11,7 +12,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
   // so removing/swapping one person never shifts anyone's team. Anyone no
   // longer waiting just shows as an open slot.
   const slots = Array.from({ length: n }, (_, i) =>
-    waitingPlayers.find((p) => p.id === (court.staged || [])[i]) || null
+    waitingPlayers.find((p) => p.id === (court[lane] || [])[i]) || null
   );
   const staged = slots.filter(Boolean);
 
@@ -47,7 +48,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
         onDrop={(e) => {
           e.preventDefault();
           const playerId = e.dataTransfer.getData("application/x-pickle-player");
-          if (playerId && availablePlayers.some((p) => p.id === playerId)) onAdd(court.id, playerId);
+          if (playerId && availablePlayers.some((p) => p.id === playerId)) onAdd(court.id, playerId, lane);
         }}
       >
         <span className="upnext-slot-hint">Drag a queue player here, or</span>
@@ -58,7 +59,7 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           // dropdown is the reliable way to fill a slot there.
           onChange={(e) => {
             const playerId = e.target.value;
-            if (playerId) onAdd(court.id, playerId);
+            if (playerId) onAdd(court.id, playerId, lane);
             e.target.value = "";
           }}
         >
@@ -76,22 +77,32 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
   }
 
   return (
-    <div className="upnext-card">
+    <div className={`upnext-card ${second ? "upnext-second" : ""}`}>
       <div className="upnext-head">
-        <h3>Up Next — Court {court.number}</h3>
+        <h3>
+          {second ? `Up Next 2 — Court ${court.number}` : `Up Next 1 — Court ${court.number}`}
+          <span className={`upnext-badge ${second ? "" : "priority"}`}>{second ? "after that" : "priority"}</span>
+        </h3>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="upnext-autofill" onClick={() => onAutoFill(court.id)}>
             Auto-fill
           </button>
-          <button className="upnext-autofill" onClick={() => onRedraw(court.id)} title="Clear and pick again from the line">
+          <button className="upnext-autofill" onClick={() => onRedraw(court.id)} title="Clear both Up Next boxes and pick again from the line">
             Redraw
           </button>
+          {second && (
+            <button className="upnext-autofill" onClick={() => onSwap(court.id)} title="Make this lineup the priority">
+              ⇅ Swap up
+            </button>
+          )}
         </div>
       </div>
       <p className="upnext-hint">
-        Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them.
+        {second
+          ? "Plays after Up Next 1 — takes the next people in line."
+          : "Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them."}
         {skillText && <strong> {skillText}</strong>}
-        {court.king && <strong> · King of the court: {court.king.wins} win{court.king.wins === 1 ? "" : "s"} in a row</strong>}
+        {!second && court.king && <strong> · King of the court: {court.king.wins} win{court.king.wins === 1 ? "" : "s"} in a row</strong>}
       </p>
       <div className="upnext-teams">
         <div className="upnext-team">
@@ -103,9 +114,11 @@ export default function UpNextCard({ court, waitingPlayers, stagedElsewhereIds, 
           {slots.slice(half).map((p, i) => renderSlot(p, `slot-${half + i}`))}
         </div>
       </div>
+      {!second && (
       <button className="btn-primary upnext-start" disabled={!canStart} onClick={() => onStart(court.id, slots.map((p) => p && p.id))}>
         {isCourtAvailable ? "Start this match" : "Court currently in use"}
       </button>
+      )}
     </div>
   );
 }

@@ -1,211 +1,71 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  useStore,
-  flushPending,
-  fillCourtIfPossible,
-  adjustCourtMinutes,
-  adjustLiveScore,
-  addToStaging,
-  autoFillStaging,
-  autoFillAllStaging,
-  removeFromStaging,
-  reorderQueue,
-  startStagedMatch,
-  substitutePlayer,
-  finishGame,
-  endSession,
-  scorePoint,
-  cancelMatch,
-  setCourtFormat,
-  setCourtSound,
-  updateSettings,
-  redrawStaging,
-  slotCount,
-  MODES,
-} from "../lib/queueLogic";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import SkillBadge from "../../components/SkillBadge";
 
-import RegisterForm from "../components/RegisterForm";
-import CourtCard from "../components/CourtCard";
-import UpNextCard from "../components/UpNextCard";
-import QueuePanel from "../components/QueuePanel";
-import Leaderboard from "../components/Leaderboard";
-import SessionHistoryPanel from "../components/SessionHistoryPanel";
-import ScoreModal from "../components/ScoreModal";
-import SettingsPanel from "../components/SettingsPanel";
-import SessionSummaryModal from "../components/SessionSummaryModal";
-import MatchBuilderModal from "../components/MatchBuilderModal";
-import EditPlayerModal from "../components/EditPlayerModal";
-import ModeModal from "../components/ModeModal";
-import LiveShareModal from "../components/LiveShareModal";
-import ResultsPanel from "../components/ResultsPanel";
+const slotCount = (c) => (c.format === "singles" ? 2 : 4);
 
-export default function Home() {
-  // Everything comes from this device's own saved session — no database
-  // reads while playing. See lib/queueLogic.js.
-  const { settings, courts, players, pending, matches, broadcast } = useStore();
-  const [showShare, setShowShare] = useState(false);
-  const [editingPlayer, setEditingPlayer] = useState(null);
-  const [showMode, setShowMode] = useState(false);
-  const [pendingScore, setPendingScore] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [sessionSummary, setSessionSummary] = useState(null);
-  const [endingSession, setEndingSession] = useState(false);
-  const [builderCourtId, setBuilderCourtId] = useState(null);
-  const [tab, setTab] = useState("queue");
+function clock(totalSeconds) {
+  const s = Math.max(0, Math.ceil(totalSeconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
-  // Upload any finished sessions that are still waiting — on page load
-  // and whenever the connection comes back.
+// Read-only live copy of the session run on the organizer's device. It only
+// ever READS one document, shows the last copy it has instantly (even with
+// poor signal), and has no buttons that change anything.
+export default function LiveView() {
+  const [live, setLive] = useState(null);
+  const [fromCache, setFromCache] = useState(true);
+  const [now, setNow] = useState(Date.now());
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
-    flushPending();
-    window.addEventListener("online", flushPending);
-    return () => window.removeEventListener("online", flushPending);
+    const unsub = onSnapshot(doc(db, "live", "state"), { includeMetadataChanges: true }, (snap) => {
+      if (snap.exists()) setLive(snap.data());
+      setFromCache(snap.metadata.fromCache);
+      setLoaded(true);
+    });
+    return unsub;
   }, []);
 
-  const waitingPlayers = useMemo(
-    () =>
-      players
-        .filter((p) => p.status === "waiting")
-        .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0)),
-    [players]
-  );
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
-  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+  const view = useMemo(() => {
+    if (!live) return null;
+    const players = live.players || [];
+    const byId = new Map(players.map((p) => [p.id, p]));
+    const waiting = players.filter((p) => p.status === "waiting").sort((a, b) => a.joinedAt - b.joinedAt);
+    const courts = (live.courts || []).filter((c) => c.number <= (live.settings?.courtCount || 1));
+    const ranked = players
+      .filter((p) => p.gamesPlayed > 0)
+      .sort((a, b) => b.wins - a.wins || b.points - a.points)
+      .slice(0, 15);
+    return { players, byId, waiting, courts, ranked };
+  }, [live]);
 
-  // Which court (if any) each waiting player is already lined up for.
-  const stagedCourtByPlayer = useMemo(() => {
-    const map = new Map();
-    courts
-      .filter((c) => c.number <= settings.courtCount)
-      .forEach((c) => (c.staged || []).forEach((id) => id && !map.has(id) && map.set(id, c.number)));
-    return map;
-  }, [courts, settings.courtCount]);
-
-  const playingPlayers = useMemo(
-    () => players.filter((p) => p.status === "playing"),
-    [players]
-  );
-
-  const visibleCourts = useMemo(() => {
-    if (!settings) return courts;
-    return courts.filter((c) => c.number <= settings.courtCount);
-  }, [courts, settings]);
-
-  // A player can be staged for only one court at a time. This set lets
-  // each Up Next card hide players already reserved by another court.
-  const stagedElsewhereIdsByCourt = useMemo(() => {
-    const stagedByCourt = new Map();
-    visibleCourts.forEach((court) => {
-      const elsewhere = new Set();
-      visibleCourts.forEach((otherCourt) => {
-        if (otherCourt.id === court.id) return;
-        (otherCourt.staged || []).forEach((id) => id && elsewhere.add(id));
-      });
-      stagedByCourt.set(court.id, elsewhere);
-    });
-    return stagedByCourt;
-  }, [visibleCourts]);
-
-  // Manual start: an organizer taps "Start game" on an idle court once
-  // enough people are waiting. (Writes are batched and applied instantly; see lib/queueLogic.js.) Previously guarded against
-  // two people tapping at the same instant on different devices.
-  async function handleStartGame(courtId, stagedIds) {
-    const court = courts.find((c) => c.id === courtId);
-    if (stagedIds?.length === slotCount(court)) {
-      await handleStartStagedMatch(courtId, stagedIds);
-      return;
-    }
-    const result = await fillCourtIfPossible(courtId);
-    if (!result.ok && result.reason === "not-enough-players") {
-      alert("Need at least 4 people waiting in the queue to start a game.");
-    }
-    if (!result.ok && result.reason === "query-failed") {
-      alert(
-        "Couldn't load the queue — this usually means a Firestore index still needs to be created. Check the browser console for a link to create it."
-      );
-    }
+  if (!loaded) {
+    return (
+      <div className="shell">
+        <div className="empty-note">Loading the live queue…</div>
+      </div>
+    );
+  }
+  if (!view) {
+    return (
+      <div className="shell">
+        <h1>CCF Open Play — Live</h1>
+        <div className="empty-note">The organizer hasn't started sharing yet. This page updates by itself.</div>
+      </div>
+    );
   }
 
-  async function handleStartStagedMatch(courtId, stagedIds) {
-    const result = await startStagedMatch(courtId, stagedIds);
-    if (!result.ok && result.reason === "court-not-idle") {
-      alert("This court is still in use. Finish the current game before starting the next match.");
-    } else if (!result.ok && result.reason === "player-not-waiting") {
-      alert("One or more selected players are no longer waiting in the queue. Update the Up Next card and try again.");
-    }
-  }
-
-  async function handleAutoFill(courtId) {
-    try {
-      await autoFillStaging(courtId);
-    } catch (error) {
-      console.error("Couldn't fill Up Next:", error);
-      alert("Couldn't fill Up Next. Check your Firebase connection and try again.");
-    }
-  }
-
-  // Emergency mid-game swap: replaces one player on a live court with
-  // someone currently waiting, without ending the game or touching the
-  // score. Whoever is on the court when the game is finished is who
-  // gets credited with the game — see finishGame.
-  async function handleSubstitute(courtId, outgoingPlayerId, incomingPlayerId) {
-    const result = await substitutePlayer(courtId, outgoingPlayerId, incomingPlayerId);
-    if (!result.ok && result.reason === "player-not-waiting") {
-      alert("That player is no longer waiting in the queue. Pick someone else.");
-    } else if (!result.ok) {
-      alert("Couldn't make that substitution — try again.");
-    }
-  }
-
-  // Reorder the queue by swapping a player up or down one spot.
-  async function handleReorder(playerId, direction) {
-    const ids = waitingPlayers.map((p) => p.id);
-    const idx = ids.indexOf(playerId);
-    const swapWith = direction === "up" ? idx - 1 : idx + 1;
-    if (swapWith < 0 || swapWith >= ids.length) return;
-    const reordered = [...ids];
-    [reordered[idx], reordered[swapWith]] = [reordered[swapWith], reordered[idx]];
-    await reorderQueue(reordered);
-  }
-
-  // One-tap win: records the winner immediately, carrying forward
-  // whatever live score has been tracked on the court (0-0 if none).
-  async function handleQuickWin(payload, winner) {
-    await finishGame({
-      ...payload,
-      winner,
-      autoRequeue: settings?.autoRequeue ?? true,
-    });
-  }
-
-  // Reorder the whole queue at once — used by drag-and-drop, where the
-  // final position (not a single up/down step) is what we know.
-  async function handleReorderFull(newOrderedIds) {
-    await reorderQueue(newOrderedIds);
-  }
-
-  async function handleEndSession() {
-    const activeCourt = visibleCourts.find((c) => c.status === "playing");
-    const confirmMsg = activeCourt
-      ? "A game is still in progress — ending the session now will stop it without a recorded result. End the session anyway?"
-      : "End today's open play? This clears the queue and resets stats for next time — final standings will be saved.";
-    if (!window.confirm(confirmMsg)) return;
-
-    setEndingSession(true);
-    try {
-      const standings = await endSession();
-      setSessionSummary({
-        standings,
-        totalGames: Math.round(standings.reduce((sum, p) => sum + p.gamesPlayed, 0) / 4),
-      });
-    } catch (error) {
-      console.error("Couldn't end the session:", error);
-      alert("Couldn't end the session. Please try again.");
-    } finally {
-      setEndingSession(false);
-    }
-  }
+  const ageSec = Math.max(0, Math.round((now - (live.updatedAt || 0)) / 1000));
+  const stale = ageSec > 120;
 
   return (
     <div className="shell">
@@ -213,97 +73,99 @@ export default function Home() {
         <div className="brand">
           <span className="dot" />
           <div>
-            <h1>CCF Open Play</h1>
-            <div className="sub">Pickleball queue</div>
-            <div className="stats-line">
-              Courts {visibleCourts.filter((c) => c.status === "playing").length}/
-              {visibleCourts.length} · Players{" "}
-              {players.filter((p) => p.status === "waiting" || p.status === "playing").length} ·
-              Queue {waitingPlayers.length}
-            </div>
+            <h1>CCF Open Play — Live</h1>
+            <div className="sub">Read-only · {view.waiting.length} waiting</div>
           </div>
-        </div>
-        <div className="topbar-actions">
-          <button className="gear-btn" onClick={handleEndSession} disabled={endingSession}>
-            {endingSession ? "Ending…" : "End session"}
-          </button>
-          <button className="gear-btn" onClick={() => setShowShare(true)}>
-            {broadcast?.on ? "Live view ●" : "Live view"}
-          </button>
-          <button className="gear-btn" onClick={() => setShowSettings(true)}>
-            Settings
-          </button>
         </div>
       </div>
 
-      {pending.length > 0 && (
-        <div
-          style={{
-            margin: "0 0 12px",
-            padding: "8px 12px",
-            borderRadius: 8,
-            background: "rgba(224,117,47,0.12)",
-            fontSize: 13,
-          }}
-        >
-          {pending.length} finished session{pending.length === 1 ? "" : "s"} saved on this device,
-          waiting for internet to upload to History. Keep this page on this device until it clears.
-        </div>
-      )}
+      <div className={`view-banner ${stale ? "stale" : ""}`}>
+        {stale
+          ? `Last update ${Math.round(ageSec / 60)} min ago — the organizer may be offline. Showing the last known queue.`
+          : `Live · updated ${ageSec}s ago`}
+        {fromCache && " · showing saved copy"}
+      </div>
 
       <div className="layout">
         <div className="col">
-          <RegisterForm />
-          <div className="toolbar">
-            <button className="chip" onClick={() => setShowMode(true)}>
-              {MODES.find((m) => m.id === settings.mode)?.name || "First In, First Out"} ▾
-            </button>
-            <span className="chip static">
-              {players.filter((p) => p.status === "waiting" || p.status === "playing").length} players ·{" "}
-              {playingPlayers.length} on court · {waitingPlayers.length} waiting
-            </span>
-            <button className="chip primary" onClick={() => updateSettings({ courtCount: settings.courtCount + 1 })}>
-              + Add court
-            </button>
-          </div>
-          {visibleCourts.map((court) => {
-            const nextPlayers = Array.from({ length: slotCount(court) }, (_, i) => i)
-              .map((i) => waitingPlayers.find((player) => player.id === (court.staged || [])[i]))
-              .filter(Boolean);
-
+          {view.courts.map((c) => {
+            const playing = c.status === "playing";
+            const n = slotCount(c);
+            const half = n / 2;
+            const ids = playing ? c.playerIds : [];
+            const remaining = playing ? (c.gameMinutes || 10) * 60 - (now - (c.startTime || now)) / 1000 : 0;
+            const team = (list) =>
+              list.map((id, i) => {
+                const p = view.byId.get(id);
+                return (
+                  <div className="court-player-row" key={id || i}>
+                    {p && <SkillBadge skill={p.skill} />}
+                    <span className="court-player-name">{p ? p.name : (c.playerNames || [])[ids.indexOf(id)]}</span>
+                  </div>
+                );
+              });
+            const next = Array.from({ length: n }, (_, i) => view.byId.get((c.staged || [])[i])).filter((p) => p && p.status === "waiting");
+            const next2 = Array.from({ length: n }, (_, i) => view.byId.get((c.staged2 || [])[i])).filter((p) => p && p.status === "waiting");
             return (
-              <div className="court-block" key={court.id}>
-              <CourtCard
-                court={court}
-                settings={settings}
-                playersById={playersById}
-                canRemove={court.number === settings.courtCount && settings.courtCount > 1 && court.status === "idle"}
-                onRemoveCourt={() => updateSettings({ courtCount: settings.courtCount - 1 })}
-                onScorePoint={scorePoint}
-                onCancelMatch={cancelMatch}
-                onSetFormat={setCourtFormat}
-                onSetSound={setCourtSound}
-                waitingCount={waitingPlayers.length}
-                waitingPlayers={waitingPlayers}
-                nextPlayers={nextPlayers}
-                onEndGame={setPendingScore}
-                onAdjustMinutes={adjustCourtMinutes}
-                onAdjustScore={adjustLiveScore}
-                onStartGame={handleStartGame}
-                onChoosePlayers={setBuilderCourtId}
-                onQuickWin={handleQuickWin}
-                onSubstitute={handleSubstitute}
-              />
-              <UpNextCard
-                court={court}
-                waitingPlayers={waitingPlayers}
-                stagedElsewhereIds={stagedElsewhereIdsByCourt.get(court.id) || new Set()}
-                onAutoFill={handleAutoFill}
-                onRedraw={redrawStaging}
-                onRemove={removeFromStaging}
-                onAdd={addToStaging}
-                onStart={handleStartStagedMatch}
-              />
+              <div className="court-block" key={c.id}>
+                <div className="court-card">
+                  <div className="court-head">
+                    <div>
+                      <div className="court-label">Court</div>
+                      <div className="court-number">{c.number}</div>
+                    </div>
+                    <span className={`court-status-pill ${playing ? "playing" : ""}`}>
+                      {playing ? (remaining <= 0 ? "Time's up" : "In play") : "Open"}
+                    </span>
+                  </div>
+                  {playing ? (
+                    <>
+                      <div className="court-teams">
+                        <div className="team team-a">{team(ids.slice(0, half))}</div>
+                        <span className="vs">vs</span>
+                        <div className="team team-b">{team(ids.slice(half))}</div>
+                      </div>
+                      <div className="view-score">
+                        {c.liveScoreA || 0} <span>–</span> {c.liveScoreB || 0}
+                      </div>
+                      <div className="timer">{remaining <= 0 ? "0:00" : clock(remaining)}</div>
+                    </>
+                  ) : (
+                    <div className="court-idle-msg">Waiting for the next match.</div>
+                  )}
+                </div>
+                <div className="upnext-card">
+                  <div className="upnext-head">
+                    <h3>Up Next 1 — Court {c.number}</h3>
+                  </div>
+                  {next.length === 0 ? (
+                    <div className="empty-note">Not set yet.</div>
+                  ) : (
+                    <div className="court-next-players view-next">
+                      {next.map((p) => (
+                        <span key={p.id}>
+                          <SkillBadge skill={p.skill} /> {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="upnext-card upnext-second">
+                  <div className="upnext-head">
+                    <h3>Up Next 2 — Court {c.number}</h3>
+                  </div>
+                  {next2.length === 0 ? (
+                    <div className="empty-note">Not set yet.</div>
+                  ) : (
+                    <div className="court-next-players view-next">
+                      {next2.map((p) => (
+                        <span key={p.id}>
+                          <SkillBadge skill={p.skill} /> {p.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -311,74 +173,37 @@ export default function Home() {
 
         <div className="col">
           <div className="panel">
-            <div className="tabs">
-              <button
-                className={`tab-btn ${tab === "queue" ? "active" : ""}`}
-                onClick={() => setTab("queue")}
-              >
-                Queue
-              </button>
-              <button
-                className={`tab-btn ${tab === "results" ? "active" : ""}`}
-                onClick={() => setTab("results")}
-              >
-                Results
-              </button>
-              <button
-                className={`tab-btn ${tab === "leaderboard" ? "active" : ""}`}
-                onClick={() => setTab("leaderboard")}
-              >
-                Leaderboard
-              </button>
-              <button
-                className={`tab-btn ${tab === "history" ? "active" : ""}`}
-                onClick={() => setTab("history")}
-              >
-                History
-              </button>
-            </div>
+            <h2>
+              Queue <span className="count">{view.waiting.length} waiting</span>
+            </h2>
+            {view.waiting.length === 0 && <div className="empty-note">No one's waiting.</div>}
+            {view.waiting.map((p, i) => (
+              <div className="view-row" key={p.id}>
+                <span className="queue-badge">No.{i + 1}</span>
+                <span className="queue-name">
+                  <SkillBadge skill={p.skill} /> {p.name}
+                </span>
+                <span className="queue-games">{p.gamesPlayed} games</span>
+              </div>
+            ))}
           </div>
-          {tab === "queue" && (
-            <QueuePanel
-              waitingPlayers={waitingPlayers}
-              playingPlayers={playingPlayers}
-              onReorder={handleReorder}
-              onReorderFull={handleReorderFull}
-              onEditPlayer={setEditingPlayer}
-              stagedCourtByPlayer={stagedCourtByPlayer}
-            />
-          )}
-          {tab === "results" && <ResultsPanel matches={matches} players={players} />}
-          {tab === "leaderboard" && <Leaderboard players={players} />}
-          {tab === "history" && <SessionHistoryPanel pending={pending} />}
+          <div className="panel">
+            <h2>Leaderboard</h2>
+            {view.ranked.length === 0 && <div className="empty-note">Scores appear once games finish.</div>}
+            {view.ranked.map((p, i) => (
+              <div className="lb-row" key={p.id}>
+                <span className="lb-rank">{i + 1}</span>
+                <span className="lb-name">{p.name}</span>
+                <span className="lb-games">{p.gamesPlayed} games</span>
+                <span className="lb-record">
+                  {p.wins}-{p.losses}
+                </span>
+                <span className="lb-points">{p.points} pts</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      
-      <div className="verse-footer">
-        <p>
-          "So, whether you eat or drink, or play pickleball, do all to the glory of God."
-        </p>
-        <span>— inspired by 1 Corinthians 10:31</span>
-      </div>
-      
-      <ScoreModal
-        pending={pendingScore}
-        autoRequeue={settings?.autoRequeue ?? true}
-        onClose={() => setPendingScore(null)}
-      />
-      {showSettings && (
-        <SettingsPanel settings={settings} onClose={() => setShowSettings(false)} />
-      )}
-      <SessionSummaryModal summary={sessionSummary} onClose={() => setSessionSummary(null)} />
-      <EditPlayerModal player={editingPlayer} onClose={() => setEditingPlayer(null)} />
-      <LiveShareModal open={showShare} broadcast={broadcast || { on: false }} onClose={() => setShowShare(false)} />
-      <ModeModal open={showMode} mode={settings.mode} onClose={() => setShowMode(false)} />
-      <MatchBuilderModal
-        courtId={builderCourtId}
-        size={slotCount(courts.find((c) => c.id === builderCourtId))}
-        waitingPlayers={waitingPlayers}
-        onClose={() => setBuilderCourtId(null)}
-      />
     </div>
   );
 }
