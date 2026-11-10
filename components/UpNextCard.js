@@ -4,7 +4,8 @@ import SkillBadge from "./SkillBadge";
 import { slotCount } from "../lib/queueLogic";
 
 export default function UpNextCard({ court, lane = "staged", waitingPlayers, stagedElsewhereIds, onAutoFill, onRedraw, onRemove, onAdd, onStart, onSwap }) {
-  const second = lane === "staged2";
+  const level = lane === "staged3" ? 3 : lane === "staged2" ? 2 : 1;
+  const second = level > 1;
   const n = slotCount(court);
   const half = n / 2;
 
@@ -80,8 +81,8 @@ export default function UpNextCard({ court, lane = "staged", waitingPlayers, sta
     <div className={`upnext-card ${second ? "upnext-second" : ""}`}>
       <div className="upnext-head">
         <h3>
-          {second ? `Up Next 2 — Court ${court.number}` : `Up Next 1 — Court ${court.number}`}
-          <span className={`upnext-badge ${second ? "" : "priority"}`}>{second ? "after that" : "priority"}</span>
+          {`Up Next ${level} — Court ${court.number}`}
+          <span className={`upnext-badge ${second ? "" : "priority"}`}>{level === 1 ? "priority" : level === 2 ? "after that" : "then"}</span>
         </h3>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="upnext-autofill" onClick={() => onAutoFill(court.id)}>
@@ -91,16 +92,18 @@ export default function UpNextCard({ court, lane = "staged", waitingPlayers, sta
             Redraw
           </button>
           {second && (
-            <button className="upnext-autofill" onClick={() => onSwap(court.id)} title="Make this lineup the priority">
+            <button className="upnext-autofill" onClick={() => onSwap(court.id, lane)} title="Make this lineup the priority">
               ⇅ Swap up
             </button>
           )}
         </div>
       </div>
       <p className="upnext-hint">
-        {second
-          ? "Plays after Up Next 1 — takes the next people in line."
-          : "Drag a queue player into a slot, or use the dropdown on iPad/touch. Use × to remove them."}
+        {(court.locked || []).includes(lane)
+          ? "Edited by hand — press Redraw to follow the queue again."
+          : second
+          ? "Follows the queue: the next people after the box above."
+          : "Follows the queue. Use × or the dropdown to change someone."}
         {skillText && <strong> {skillText}</strong>}
         {!second && court.king && <strong> · King of the court: {court.king.wins} win{court.king.wins === 1 ? "" : "s"} in a row</strong>}
       </p>

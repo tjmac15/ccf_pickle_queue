@@ -188,8 +188,8 @@ export default function QueuePanel({ waitingPlayers, playingPlayers, onReorder, 
             </span>
             <span className="queue-badge">No.{queuePosition + 1}</span>
             {stagedCourtByPlayer && stagedCourtByPlayer.get(p.id) ? (
-              <span className={`queue-upnext-tag ${stagedCourtByPlayer.get(p.id).which === 2 ? "second" : ""}`}>
-                {stagedCourtByPlayer.get(p.id).which === 2 ? "Up next 2" : "Up next 1"} · C{stagedCourtByPlayer.get(p.id).court}
+              <span className={`queue-upnext-tag ${stagedCourtByPlayer.get(p.id).which > 1 ? "second" : ""}`}>
+                {`Up next ${stagedCourtByPlayer.get(p.id).which}`} · C{stagedCourtByPlayer.get(p.id).court}
               </span>
             ) : (
               <span className="queue-status-tag waiting">Waiting</span>

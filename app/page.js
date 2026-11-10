@@ -82,6 +82,7 @@ export default function Home() {
       .forEach((c) => {
         (c.staged || []).forEach((id) => id && !map.has(id) && map.set(id, { court: c.number, which: 1 }));
         (c.staged2 || []).forEach((id) => id && !map.has(id) && map.set(id, { court: c.number, which: 2 }));
+        (c.staged3 || []).forEach((id) => id && !map.has(id) && map.set(id, { court: c.number, which: 3 }));
       });
     return map;
   }, [courts, settings.courtCount]);
@@ -102,10 +103,10 @@ export default function Home() {
     // key = `${courtId}:${lane}` -> everyone lined up anywhere EXCEPT that box
     const out = new Map();
     visibleCourts.forEach((court) => {
-      ["staged", "staged2"].forEach((lane) => {
+      ["staged", "staged2", "staged3"].forEach((lane) => {
         const elsewhere = new Set();
         visibleCourts.forEach((o) => {
-          ["staged", "staged2"].forEach((l) => {
+          ["staged", "staged2", "staged3"].forEach((l) => {
             if (o.id === court.id && l === lane) return;
             (o[l] || []).forEach((id) => id && elsewhere.add(id));
           });
@@ -303,7 +304,7 @@ export default function Home() {
                 onQuickWin={handleQuickWin}
                 onSubstitute={handleSubstitute}
               />
-              {["staged", "staged2"].map((lane) => (
+              {["staged", "staged2", "staged3"].map((lane) => (
                 <UpNextCard
                   key={lane}
                   court={court}
@@ -373,6 +374,7 @@ export default function Home() {
           "So, whether you eat or drink, or play pickleball, do all to the glory of God."
         </p>
         <span>— inspired by 1 Corinthians 10:31</span>
+        <span style={{ display: "block", opacity: 0.5, fontSize: 11, marginTop: 6 }}>v9.2 · saved on this device</span>
       </div>
       
       <ScoreModal
